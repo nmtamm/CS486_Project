@@ -13,6 +13,11 @@ cd path/to/your/project
 opencode
 ```
 
+To run with docker and mounting your current working directory, run this instead: 
+```bash
+docker run -it --rm --mount type=bind,source="$(pwd)",target=/workspace ghcr.io/anomalyco/opencode
+```
+
 During setup, choose the LLM provider and model that your group will use.
 
 > Do not commit API keys, access tokens, or private credentials to Git.
@@ -33,6 +38,11 @@ Open the project folder in the terminal:
 ```bash
 cd path/to/your/project
 opencode
+```
+
+To run with docker and mounting your current working directory, run this instead: 
+```bash
+docker run -it --rm --mount type=bind,source="$(pwd)",target=/workspace ghcr.io/anomalyco/opencode
 ```
 
 #### Step 2: Connect an LLM Provider
