@@ -6,7 +6,7 @@ Save to:
 
 ## Output document structure
 
-Save the final document to `outputs/01-business-requirement-analysis.md`. It must contain **exactly four sections** (no Assumptions or Open Questions sections).
+Save the final document to `outputs/01-business-requirement-analysis.md`. It must contain **exactly five sections** (no Assumptions or Open Questions sections).
 
 > **Template:** `TEMPLATE.md`
 >
@@ -34,7 +34,20 @@ Save the final document to `outputs/01-business-requirement-analysis.md`. It mus
   - **Key Attributes:** A list of mandatory and optional business fields that must be captured.
   - **Predefined Options (Enums):** Closed-loop list of valid choices for types, categories, or statuses related to this entity.
 
-### 4. Business Rules
+### 4. Relationships & Cardinalities
+- Identify all business-level relationships between the entities listed in Section 3.
+- For each relationship, specify:
+  - **Left Entity / Right Entity:** The two entities involved.
+  - **Relationship:** A brief verb phrase describing the connection.
+  - **Cardinality:** The business cardinality (e.g., 1 → N, M → N, 1 → 0..1).
+  - **Business Meaning:** A sentence explaining the relationship in plain business language.
+- Present relationships as a table with the following columns:
+
+| Left Entity | Relationship | Right Entity | Cardinality | Business Meaning |
+|-------------|--------------|--------------|-------------|------------------|
+| ... | ... | ... | ... | ... |
+
+### 5. Business Rules
 - Extract all constraints, policies, logic rules, and workflow rules from the requirement and the clarifications.
 - Present rules as a table with the following columns:
 
@@ -62,4 +75,4 @@ Save the final document to `outputs/01-business-requirement-analysis.md`. It mus
 
 3. **Final Compilation & Export:**
    - Once the user answers all clarification questions, synthesize the answers into the final ruleset.
-   - Generate the complete 4-section document.
+   - Generate the complete 5-section document.

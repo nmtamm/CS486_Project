@@ -56,7 +56,31 @@
 | Complaint | Complaint ID | Order (FK), Customer (FK), Complaint Type, Detailed Description, Creation Date, Assigned Handler (FK to Employee), Status, Resolution Result, Compensation Amount | Type: damaged_goods, lost_goods, wrong_delivery, late_delivery, driver_conduct, incorrect_shipping_fee. Status: new, in_progress, awaiting_evidence, resolved, compensated, rejected |
 | ComplaintImage | Image ID | Complaint (FK), Image URL/Path, Upload Date | — |
 
-## 4. Business Rules
+## 4. Relationships & Cardinalities
+
+| Left Entity | Relationship | Right Entity | Cardinality | Business Meaning |
+|-------------|--------------|--------------|-------------|------------------|
+| EmployeePosition | defines | Employee | 1 → N | A position can be held by many employees. |
+| Employee | is assigned to | Warehouse | N → 1 | Many employees are assigned to one warehouse. |
+| Employee (manager) | manages | Warehouse | 1 → 1 | An employee (warehouse manager) manages exactly one warehouse. |
+| MembershipTier | classifies | Customer | 1 → N | A tier classifies many customers. |
+| Customer | sends | Order | 1 → N | A customer sends many orders. |
+| Warehouse (receiving) | receives | Order | 1 → N | A warehouse receives many orders. |
+| Order | requires | DriverAssignment | 1 → N | An order can have multiple assignments (pickup, delivery). |
+| Driver | assigned to | DriverAssignment | 1 → N | A driver can be assigned to many orders. |
+| Order | tracks | TrackingEntry | 1 → N | An order has many tracking entries (one per transit leg). |
+| Warehouse | origin of | TrackingEntry | 1 → N | A warehouse is the origin of many tracking legs. |
+| Warehouse | destination of | TrackingEntry | 1 → N | A warehouse is the destination of many tracking legs. |
+| Driver | transports | TrackingEntry | 1 → N | A driver transports many tracking legs. |
+| Order | has | DeliveryAttempt | 1 → N | An order has up to 3 delivery attempts. |
+| Order (COD) | has | CODCollection | 1 → 0..1 | A COD order has at most one collection record. |
+| Customer | receives | CODDisbursement | 1 → N | A customer receives many COD disbursements. |
+| Order | applies | Surcharge | M → N | An order can have many surcharges; a surcharge applies to many orders. |
+| Order | subject of | Complaint | 1 → N | An order can be the subject of many complaints. |
+| Customer | files | Complaint | 1 → N | A customer files many complaints. |
+| Employee (handler) | handles | Complaint | 1 → N | An employee handles many complaints. |
+
+## 5. Business Rules
 
 | ID | Rule |
 |----|------|

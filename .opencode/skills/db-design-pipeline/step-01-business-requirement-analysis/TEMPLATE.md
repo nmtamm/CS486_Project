@@ -37,7 +37,16 @@
 
 ---
 
-## 4. Business Rules
+## 4. Relationships & Cardinalities
+
+| Left Entity | Relationship | Right Entity | Cardinality | Business Meaning |
+|-------------|--------------|--------------|-------------|------------------|
+| {{Entity A}} | {{verb phrase}} | {{Entity B}} | {{e.g., 1 → N}} | {{Plain business description.}} |
+| {{Entity C}} | {{verb phrase}} | {{Entity D}} | {{e.g., M → N}} | {{Plain business description.}} |
+
+---
+
+## 5. Business Rules
 
 | ID | Rule |
 |----|------|
