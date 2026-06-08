@@ -22,8 +22,8 @@ Before assuming anything, inspect the project:
 
 Create or update the following files:
 
-1. `outputs/01-business-requirement-analysis.md`
-2. `outputs/02-conceptual-design-erd.md`
+1. `outputs/01-business-req-analysis-G02.md`
+2. `outputs/02-erd-design-G02.md`
 
 Do not skip any Markdown file.
 

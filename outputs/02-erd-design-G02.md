@@ -1,6 +1,6 @@
 # Conceptual Design / ERD — CS486 Space Booking System
 
-> Based on: [Business Requirement Analysis](01-business-requirement-analysis.md)
+> Based on: [Business Requirement Analysis](01-business-req-analysis-G02.md)
 
 ---
 
@@ -152,28 +152,28 @@ Represents a reported maintenance issue for a space. Tracks the problem from rep
 
 ## Relationship Summary
 
-| Left Entity | Relationship | Right Entity | Cardinality | Description |
-|-------------|--------------|--------------|-------------|-------------|
-| User | submits | BookingRequest | 1 → N | A user can submit many booking requests. |
-| Space | is booked in | BookingRequest | 1 → N | A space can appear in many booking requests (but with no overlapping approved time ranges). |
-| User | approves | BookingRequest | 0..1 → N | A facility staff or manager can approve/reject many bookings. A booking may not yet have an approver. |
-| User | checks in | BookingRequest | 0..1 → N | A facility staff member can check in many bookings. A booking may not yet be checked in. |
-| User | completes | BookingRequest | 0..1 → N | A facility staff member can complete many bookings. A booking may not yet be completed. |
-| Space | equipped with | SpaceFacility | 1 → N | A space can be linked to many facility records. |
-| Facility | installed in | SpaceFacility | 1 → N | A facility type can be installed in many spaces. |
-| User | reports | MaintenanceRecord | 1 → N | Any user can report many maintenance issues. |
-| User | assigned to | MaintenanceRecord | 0..1 → N | A staff member can be assigned to many maintenance records. Not all records have an assignee. |
-| Space | undergoes | MaintenanceRecord | 1 → N | A space can have many maintenance records over time. |
+| Left Entity | Relationship  | Right Entity      | Cardinality | Description                                                                                           |
+| ----------- | ------------- | ----------------- | ----------- | ----------------------------------------------------------------------------------------------------- |
+| User        | submits       | BookingRequest    | 1 → N       | A user can submit many booking requests.                                                              |
+| Space       | is booked in  | BookingRequest    | 1 → N       | A space can appear in many booking requests (but with no overlapping approved time ranges).           |
+| User        | approves      | BookingRequest    | 0..1 → N    | A facility staff or manager can approve/reject many bookings. A booking may not yet have an approver. |
+| User        | checks in     | BookingRequest    | 0..1 → N    | A facility staff member can check in many bookings. A booking may not yet be checked in.              |
+| User        | completes     | BookingRequest    | 0..1 → N    | A facility staff member can complete many bookings. A booking may not yet be completed.               |
+| Space       | equipped with | SpaceFacility     | 1 → N       | A space can be linked to many facility records.                                                       |
+| Facility    | installed in  | SpaceFacility     | 1 → N       | A facility type can be installed in many spaces.                                                      |
+| User        | reports       | MaintenanceRecord | 1 → N       | Any user can report many maintenance issues.                                                          |
+| User        | assigned to   | MaintenanceRecord | 0..1 → N    | A staff member can be assigned to many maintenance records. Not all records have an assignee.         |
+| Space       | undergoes     | MaintenanceRecord | 1 → N       | A space can have many maintenance records over time.                                                  |
 
 ---
 
 ## Traceability
 
-| Entity | Derived From Requirement |
-|--------|-------------------------|
-| User | §10: user information, roles, account status |
-| Space | §11: bookable space attributes, types, statuses |
-| Facility | §12: facilities available in each space |
-| SpaceFacility | §12: many-to-many link between Space and Facility |
-| BookingRequest | §13–16: booking submission, approval, check-in, completion |
-| MaintenanceRecord | §17: maintenance reporting and tracking |
+| Entity            | Derived From Requirement                                   |
+| ----------------- | ---------------------------------------------------------- |
+| User              | §10: user information, roles, account status               |
+| Space             | §11: bookable space attributes, types, statuses            |
+| Facility          | §12: facilities available in each space                    |
+| SpaceFacility     | §12: many-to-many link between Space and Facility          |
+| BookingRequest    | §13–16: booking submission, approval, check-in, completion |
+| MaintenanceRecord | §17: maintenance reporting and tracking                    |
