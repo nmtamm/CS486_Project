@@ -18,8 +18,9 @@ The document must contain exactly the following sections:
 
 - Use Mermaid `erDiagram` syntax.
 - Every entity identified in Step 1 (Section 3) must appear.
-- Include all attributes. Mark primary keys as `PK`, foreign keys as `FK`, unique attributes as `UK`, and mandatory (not null) attributes as `(required)`.
+- Include all attributes. Mark primary keys as `PK`, foreign keys as `FK`, and unique attributes as `UK`. Mermaid's `erDiagram` does not support a `(required)` marker for not-null constraints; do not add one.
 - Use appropriate data types (`string`, `int`, `float`, `datetime`, `boolean`, `text`).
+- Multiple key markers on one attribute are allowed via comma separation: `PK, FK`. Do not use space-separated markers (`PK FK` causes a parse error). For composite primary keys where each part is also a foreign key, use `PK, FK`.
 - Show all relationships with Crow's Foot cardinality notation:
   - `||` — mandatory one (exactly 1)
   - `|o` — optional one (0 or 1)
@@ -57,11 +58,11 @@ Present all relationships as a table with columns:
 
 ### 4. Traceability
 
-Present a traceability table mapping each entity back to the original requirement paragraph. Use the paragraph numbering from `CS486_Project.md`:
+Present a traceability table mapping each entity back to the original requirement sections in `01-business-req-analysis-G02.md`. Reference section numbers from that document (Section 3: Entities, Section 4: Relationships, Section 5: Rules) rather than external paragraph numbers.
 
 | Entity | Derived From Requirement |
 | ------ | ------------------------ |
-| User   | §10: user information... |
+| User   | Section 3, User row: user information, roles, account status |
 
 ---
 

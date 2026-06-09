@@ -61,5 +61,5 @@ erDiagram
 
 | Entity | Derived From Requirement |
 | ------ | ------------------------ |
-| {{Entity}} | {{§Paragraph: short description}} |
-| {{Entity}} | {{§Paragraph: short description}} |
+| {{Entity}} | {{Section N, Entity row: short description — reference actual section numbers from 01-business-req-analysis-G02.md}} |
+| {{Entity}} | {{Section N, Entity row: short description}} |
