@@ -1,6 +1,6 @@
 # Conceptual Design / ERD — CS486 Space Booking System
 
-> Based on: [Business Requirement Analysis](01-business-req-analysis-G02.md)
+
 
 ---
 
