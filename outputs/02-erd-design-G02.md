@@ -9,72 +9,72 @@
 ```mermaid
 erDiagram
     User {
-        string user_id PK
-        string full_name
-        string email UK
-        string phone_number
-        string role
-        string department
-        string account_status
+        varchar user_id PK
+        nvarchar full_name
+        varchar email UK
+        varchar phone_number
+        varchar role 
+        nvarchar department
+        varchar account_status
     }
 
     Space {
-        string space_code PK
-        string space_name
-        string space_type
-        string building
+        varchar space_code PK
+        nvarchar space_name
+        varchar space_type
+        nvarchar building
         int floor
-        string room_number
+        varchar room_number
         int capacity
-        string current_status
-        string usage_policy
+        varchar current_status
+        nvarchar usage_policy
     }
 
     Facility {
-        string facility_id PK
-        string facility_name
-        string description
+        varchar facility_id PK
+        varchar facility_name
+        nvarchar description
     }
 
     SpaceFacility {
-        string space_code PK, FK
-        string facility_id PK, FK
+        varchar space_code PK, FK
+        varchar facility_id PK, FK
         int quantity
     }
 
     BookingRequest {
-        string booking_id PK
-        string space_code FK
-        string requester_id FK
+        varchar booking_id PK
+        varchar space_code FK
+        varchar requester_id FK
         datetime requested_start_time
         datetime requested_end_time
-        string purpose
+        varchar purpose
         int expected_participants
-        string booking_status
-        string approver_id FK
+        varchar booking_status
+        varchar approver_id FK
         datetime decision_time
-        string decision_note
-        string rejection_reason
+        nvarchar decision_note
+        nvarchar rejection_reason
         datetime actual_start_time
-        string checked_in_by FK
-        string initial_condition
+        varchar checked_in_by FK
+        nvarchar initial_condition
         datetime actual_end_time
-        string completed_by FK
-        string final_condition
-        string usage_notes
+        varchar completed_by FK
+        nvarchar final_condition
+        nvarchar usage_notes
     }
 
     MaintenanceRecord {
-        string maintenance_id PK
-        string space_code FK
-        string reporter_id FK
-        string assigned_staff_id FK
-        string problem_description
-        string problem_type
+        varchar maintenance_id PK
+        varchar space_code FK
+        varchar reporter_id FK
+        varchar assigned_staff_id FK
+        nvarchar problem_description
+        varchar problem_type
         datetime start_time
         datetime completion_time
-        string status
-        string result_note
+        varchar status
+        nvarchar result_note
     }
 
     User ||--o{ BookingRequest : "submits"
@@ -111,6 +111,8 @@ Represents any person who interacts with the system. Each user has a unique univ
 
 **Constraints (from Business Rules):**
 - Each user must have a unique email address (BR-03).
+- User roles are limited to the predefined list (BR-01).
+- Account statuses are limited to the predefined list (BR-02).
 
 ### 2. Space
 Represents a bookable physical space managed by the School. Each space is uniquely identified by a `space_code`. The `current_status` determines whether bookings are allowed.
@@ -122,6 +124,8 @@ Represents a bookable physical space managed by the School. Each space is unique
 **Constraints (from Business Rules):**
 - A space with status `under_maintenance`, `temporarily_closed`, or `retired` cannot be booked (BR-06).
 - A space with an active maintenance record (status `reported` or `in_progress`) must have its `current_status` set to `under_maintenance` (BR-21).
+- Space types are limited to the predefined list (BR-04).
+- Space statuses are limited to the predefined list (BR-05).
 
 ### 3. Facility
 Represents a type of equipment or amenity that can be present in a space. Facilities are predefined and managed centrally.
@@ -136,8 +140,8 @@ Links spaces to the facilities they contain and records the quantity of each fac
 Represents a request to use a space for a specific time period and purpose. Tracks the full lifecycle from submission through approval, check-in, and completion.
 
 **Lifecycle (Booking Status):**
-`pending` → `approved` | `rejected` | `cancelled` 
-`approved` → `checked_in` | `cancelled` | `no-show`
+`pending` → `approved` | `rejected` | `cancelled` <br>
+`approved` → `checked_in` | `cancelled` | `no-show` <br>
 `checked_in` → `completed` 
 
 **Predefined Options:**
@@ -160,7 +164,7 @@ Represents a request to use a space for a specific time period and purpose. Trac
 Represents a reported maintenance issue for a space. Tracks the problem from reporting through assignment, resolution, and closure.
 
 **Lifecycle (Status):**
-`reported` → `in_progress` → `completed` | `cancelled`
+`reported` → `in_progress` → `completed` | `cancelled` <br>
 `reported` → `cancelled`
 
 **Predefined Options:**
