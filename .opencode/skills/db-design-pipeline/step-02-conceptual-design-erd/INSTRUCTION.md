@@ -6,9 +6,6 @@ Save to:
 
 `outputs/02-erd-design-G02.md`
 
-> **Template:** `TEMPLATE.md`
-> 
-> **Example:** `EXAMPLE.md` (in this directory)
 
 ## Output document structure
 
@@ -75,19 +72,12 @@ Present a traceability table mapping each entity back to the original requiremen
    - Read the Step 1 output (`outputs/01-business-req-analysis-G02.md`) completely.
    - Identify all entities, attributes, relationships, and business rules.
 
-2. **Template Population:**
-   - Copy `TEMPLATE.md` as the starting document.
-   - Populate the Mermaid `erDiagram` block with entities, attributes, keys, and relationships using Crow's Foot notation.
-   - Fill in entity descriptions, predefined options, and lifecycle diagrams.
-   - Complete the relationship summary table.
-   - Complete the traceability table.
-
-3. **Interactive Clarification Loop (if needed):**
+2. **Interactive Clarification Loop (if needed):**
    - Use the `question` tool for any ambiguity not already resolved in Step 1.
    - Do not re-ask questions already answered during Step 1.
 
-4. **Final Review & Export:**
+3. **Final Review & Export:**
    - Verify that every entity, attribute, and relationship from Step 1 appears in the diagram and description sections.
    - Verify that all business rules (especially overlap prevention and status lifecycles) are either represented in the diagram or explicitly noted in the entity descriptions.
    - Remove all `{{placeholder}}` markers.
-   - Save the completed document to `outputs/02-erd-design-G02.md`. Do not keep `TEMPLATE.md` markers in the output.
+   - Save the completed document to `outputs/02-erd-design-G02.md`. 
