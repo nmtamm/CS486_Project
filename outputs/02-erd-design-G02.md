@@ -1,6 +1,6 @@
-# Conceptual Design — ERD
+# Conceptual Design / ERD — CS486 Space Booking System
 
-> ERD for the School Shared Space Booking System.
+> Based on: [Business Requirement Analysis](01-business-req-analysis-G02.md)
 
 ---
 
@@ -77,20 +77,25 @@ erDiagram
         nvarchar result_note
     }
 
-    User ||--o{ BookingRequest : submits
-    Space ||--o{ BookingRequest : "receives bookings for"
-    Space ||--o{ SpaceFacility : contains
+    User ||--o{ BookingRequest : "submits"
+
+    Space ||--o{ BookingRequest : "is booked in"
+
+    User |o--o{ BookingRequest : "approves"
+
+    User |o--o{ BookingRequest : "checks in"
+
+    User |o--o{ BookingRequest : "completes"
+
+    Space ||--o{ SpaceFacility : "equipped with"
+
     Facility ||--o{ SpaceFacility : "installed in"
-    BookingRequest ||--o| ApprovalDecision : "reviewed by"
-    User ||--o{ ApprovalDecision : decides
-    BookingRequest ||--o| CheckIn : "checked into"
-    BookingRequest ||--o| CheckOut : "checked out of"
-    User ||--o{ CheckIn : "performs check-in"
-    User ||--o{ CheckOut : "performs check-out"
+
+    User ||--o{ MaintenanceRecord : "reports"
+
+    User |o--o{ MaintenanceRecord : "assigned to"
+
     Space ||--o{ MaintenanceRecord : "undergoes"
-    User ||--o{ MaintenanceRecord : reports
-    User ||--o{ MaintenanceRecord : "assigned to"
-    BookingRequest ||--o{ MaintenanceRecord : "may be referenced by"
 ```
 
 ---
