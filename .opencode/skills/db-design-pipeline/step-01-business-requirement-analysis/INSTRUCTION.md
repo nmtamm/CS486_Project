@@ -8,10 +8,6 @@ Save to:
 
 Save the final document to `outputs/01-business-req-analysis-G02.md`. It must contain **exactly five sections** (no Assumptions or Open Questions sections).
 
-> **Template:** `TEMPLATE.md`
->
-> **Example:** `EXAMPLE.md`
-
 ### 1. Business Purpose
 - Identify the core problem the system aims to solve.
 - Describe the primary objectives and scope of the system.
