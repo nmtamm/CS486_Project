@@ -1,3 +1,20 @@
+| No | Task | Assigned to | Deadline | Notes |
+|---|---|---|---|---|
+| 1 | Business Requirement Analysis | Kiệt | 23h59 7/6/2026 | Push markdown file to Github |
+| 2 | Task 1 Review | All | 23h59 8/6/2026 | All members have to leave some comment (use Issues Tab in Github), even though you are satisfied with the results |
+| 3 | Conceptual Database Design | Anh Dâng | 23h59 11/6/2026 | Push markdown file to Github |
+| 4 | Task 3 Review | All | 23h59 12/6/2026 | All members have to leave some comment (use Issues Tab in Github), even though you are satisfied with the results |
+| 5 | Logical Database Design | Hậu | 23h59 15/6/2026 | Push markdown file to Github |
+| 6 | Task 5 Review | All | 23h59 16/6/2026 | All members have to leave some comment (use Issues Tab in Github), even though you are satisfied with the results |
+| 7 | Database Design Validation | Tâm | 23h59 18/6/2026 | Push markdown file to Github |
+| 8 | Database Implementation | Anh Dâng + Tâm | 23h59 20/6/2026 | Push markdown file to Github |
+| 9 | Task 8 Review | All | 23h59 21/6/2026 | All members have to leave some comment (use Issues Tab in Github), even though you are satisfied with the results |
+| 10 | Sample Data Preparation | Kiệt + Hậu | 23h59 23/6/2026 | Push markdown file to Github |
+| 11 | Task 10 Review | All | 23h59 24/6/2026 | All members have to leave some comment (use Issues Tab in Github), even though you are satisfied with the results |
+| 12 | Query Design | All | 23h59 27/6/2026 | Each query must include: ```Business question```, ```Target user(s) that would use the query```, ```Short explanation of why the query is useful```, ```SQL statement```. Inserting all requirements for each query to this [file](https://docs.google.com/spreadsheets/d/1o-mq4OIFtubjrSkgKc0G2Eod4VeHaRLULizCoO4g3xs/edit?usp=sharing) to prevent duplicates  | 
+| 13 | Task 12 Review | All | 23h59 28/6/2026 | All members have to leave some comment (use Issues Tab in Github), even though you are satisfied with the results |
+| 14 | Finish project report | All | | |
+
 # Database Design Agent Project
 
 This project requires each group to build and improve an AI agent that reads a business requirement and generates database design artifacts from requirement analysis to SQL query design.
@@ -11,6 +28,11 @@ After installation, open the project folder and start OpenCode:
 ```bash
 cd path/to/your/project
 opencode
+```
+
+To run with docker and mounting your current working directory, run this instead: 
+```bash
+docker run -it --rm --mount type=bind,source="$(pwd)",target=/workspace ghcr.io/anomalyco/opencode
 ```
 
 During setup, choose the LLM provider and model that your group will use.
@@ -33,6 +55,11 @@ Open the project folder in the terminal:
 ```bash
 cd path/to/your/project
 opencode
+```
+
+To run with docker and mounting your current working directory, run this instead: 
+```bash
+docker run -it --rm --mount type=bind,source="$(pwd)",target=/workspace ghcr.io/anomalyco/opencode
 ```
 
 #### Step 2: Connect an LLM Provider

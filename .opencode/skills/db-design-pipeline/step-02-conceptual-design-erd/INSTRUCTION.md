@@ -4,7 +4,7 @@ The ERD should be based on the document from the prior step: [Step 1: Business R
 
 Save to:
 
-`outputs/02-conceptual-design-erd.md`
+`02-erd-design-G02.md`
 
 The document must include:
 

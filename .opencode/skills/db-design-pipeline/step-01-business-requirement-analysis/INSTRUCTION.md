@@ -2,11 +2,11 @@
 
 Save to:
 
-`outputs/01-business-requirement-analysis.md`
+`outputs/01-business-req-analysis-G02.md`
 
 ## Output document structure
 
-Save the final document to `outputs/01-business-requirement-analysis.md`. It must contain **exactly five sections** (no Assumptions or Open Questions sections).
+Save the final document to `outputs/01-business-req-analysis-G02.md`. It must contain **exactly five sections** (no Assumptions or Open Questions sections).
 
 > **Template:** `TEMPLATE.md`
 >
@@ -21,9 +21,9 @@ Save the final document to `outputs/01-business-requirement-analysis.md`. It mus
 - For each role, note their responsibilities and interactions with the system.
 - Present actors as a table with the following columns:
 
-| ID | Role | Responsibilities | Interactions |
-|----|------|-----------------|--------------|
-| A-01 | ... | ... | ... |
+| ID   | Role | Responsibilities | Interactions |
+| ---- | ---- | ---------------- | ------------ |
+| A-01 | ...  | ...              | ...          |
 
 - Assign each actor a unique ID (A-01, A-02, ...).
 
@@ -47,9 +47,9 @@ Save the final document to `outputs/01-business-requirement-analysis.md`. It mus
 - Extract all constraints, policies, logic rules, and workflow rules from the requirement and the clarifications.
 - Present rules as a table with the following columns:
 
-| ID | Rule |
-|----|------|
-| BR-01 | ... |
+| ID    | Rule |
+| ----- | ---- |
+| BR-01 | ...  |
 
 - Assign each rule a unique ID (BR-01, BR-02, ...).
 
