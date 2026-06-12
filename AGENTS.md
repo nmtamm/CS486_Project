@@ -23,8 +23,8 @@ Do not jump directly to DDL. The documents from the prior steps should be follow
 
 ## Required Outputs
 
-- `outputs/01-business-requirement-analysis.md`
-- `outputs/02-conceptual-design-erd.md`
+- `outputs/01-business-requirement-analysis-G02.md`
+- `outputs/02-conceptual-design-erd-G02.md`
 
 ## DBMS
 
@@ -37,3 +37,4 @@ Use Microsoft SQL Server unless the user specifies another DBMS.
 - Preserve traceability from requirement → entity → relationship → table → constraint.
 - Use Mermaid `erDiagram` for ERD.
 - Do not silently invent business rules.
+- Cross-document consistency: every reference in a later document to a prior document must use that prior document's actual section numbers, headings, and content. Before finalizing any output, verify that all cross-references (e.g., traceability tables, "derived from" annotations) exist in the referenced document. Never invent section numbers like §10, §11, etc. — use the real section structure (e.g., "Section 3 (Entities)").
