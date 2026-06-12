@@ -13,26 +13,26 @@ erDiagram
         nvarchar full_name
         varchar email UK
         varchar phone_number
-        varchar role 
+        varchar role "Values: student; lecturer; teaching_assistant; facility_staff; department_administrator; facility_manager"
         nvarchar department
-        varchar account_status
+        varchar account_status "Values: active; inactive; suspended"
     }
 
     Space {
         varchar space_code PK
         nvarchar space_name
-        varchar space_type
+        varchar space_type "Values: auditorium; classroom; computer_laboratory; project_laboratory; meeting_room; student_workspace"
         nvarchar building
         int floor
         varchar room_number
         int capacity
-        varchar current_status
+        varchar current_status "Values: available; in_use; under_maintenance; temporarily_closed; retired"
         nvarchar usage_policy
     }
 
     Facility {
         varchar facility_id PK
-        varchar facility_name
+        varchar facility_name "Values: projector; whiteboard; microphone; computer; livestreaming_equipment; air_conditioner"
         nvarchar description
     }
 
@@ -48,9 +48,9 @@ erDiagram
         varchar requester_id FK
         datetime requested_start_time
         datetime requested_end_time
-        varchar purpose
+        varchar purpose "Values: lecture; examination; seminar; workshop; meeting; student_activity; administrative_event"
         int expected_participants
-        varchar booking_status
+        varchar booking_status "Values: pending; approved; rejected; cancelled; checked_in; completed; no-show"
         varchar approver_id FK
         datetime decision_time
         nvarchar decision_note
@@ -70,10 +70,10 @@ erDiagram
         varchar reporter_id FK
         varchar assigned_staff_id FK
         nvarchar problem_description
-        varchar problem_type
+        varchar problem_type "Values: broken_projector; air_conditioning_failure; damaged_furniture; cleaning_issue; network_problem"
         datetime start_time
         datetime completion_time
-        varchar status
+        varchar status "Values: reported; in_progress; completed; cancelled"
         nvarchar result_note
     }
 
