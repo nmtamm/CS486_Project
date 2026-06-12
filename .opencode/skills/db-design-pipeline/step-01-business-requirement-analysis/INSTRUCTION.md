@@ -41,11 +41,7 @@ Save the final document to `outputs/01-business-requirement-analysis.md`. It mus
   - **Relationship:** A brief verb phrase describing the connection.
   - **Cardinality:** The business cardinality (e.g., 1 → N, M → N, 1 → 0..1).
   - **Business Meaning:** A sentence explaining the relationship in plain business language.
-- Present relationships as a table with the following columns:
-
-| Left Entity | Relationship | Right Entity | Cardinality | Business Meaning |
-|-------------|--------------|--------------|-------------|------------------|
-| ... | ... | ... | ... | ... |
+- Present each relationship as a short, concise natural-language sentence.
 
 ### 5. Business Rules
 - Extract all constraints, policies, logic rules, and workflow rules from the requirement and the clarifications.
@@ -64,7 +60,7 @@ Save the final document to `outputs/01-business-requirement-analysis.md`. It mus
 ## Workflow Execution Order (Strict)
 
 1. **Internal Deep Scan (Background Only):**
-   - Draft Section 1 (Purpose) and Section 2 (Actors) internally.
+   - Internally analyze the provided raw business requirements against ALL 5 output sections.
    - Intentionally scan for logical gaps, missing constraints, unclear edge-case state transitions, or ambiguous authorization rules. Discard trivial questions or those already addressed in the input requirements.
 
 2. **Interactive Clarification Loop (Human-in-the-loop):**

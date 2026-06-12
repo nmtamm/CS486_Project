@@ -1,179 +1,115 @@
-# Conceptual Design / ERD — CS486 Space Booking System
+# Conceptual Design / ERD — School Space Booking System
 
-> Based on: [Business Requirement Analysis](01-business-requirement-analysis.md)
+> Based on [Business Requirement Analysis](01-business-requirement-analysis.md).
 
 ---
 
-## Entity-Relationship Diagram (Crow's Foot Notation)
+## Entity-Relationship Diagram (Mermaid)
 
 ```mermaid
 erDiagram
     User {
-        string user_id PK
-        string full_name
-        string email UK
-        string phone_number
+        int userId PK
+        string fullName
+        string email
+        string phone
         string role
         string department
-        string account_status
+        string accountStatus
     }
 
     Space {
-        string space_code PK
-        string space_name
-        string space_type
+        string spaceCode PK
+        string name
+        string type
         string building
         int floor
-        string room_number
+        string roomNumber
         int capacity
-        string current_status
-        string usage_policy
+        string status
+        string usagePolicy
     }
 
     Facility {
-        string facility_id PK
-        string facility_name
-        string description
-    }
-
-    SpaceFacility {
-        string space_code FK
-        string facility_id FK
+        int facilityId PK
+        string name
         int quantity
     }
 
-    BookingRequest {
-        string booking_id PK
-        string space_code FK
-        string requester_id FK
-        datetime requested_start_time
-        datetime requested_end_time
+    Booking {
+        int bookingId PK
+        datetime requestedStartTime
+        datetime requestedEndTime
         string purpose
-        int expected_participants
-        string booking_status
-        string approver_id FK
-        datetime decision_time
-        string decision_note
-        string rejection_reason
-        datetime actual_start_time
-        string checked_in_by FK
-        string initial_condition
-        datetime actual_end_time
-        string completed_by FK
-        string final_condition
-        string usage_notes
+        int expectedParticipants
+        string status
+        datetime decisionTime
+        string decisionNote
+        string rejectionReason
+        datetime actualStartTime
+        string initialCondition
+        datetime actualEndTime
+        string finalCondition
+        string usageNotes
     }
 
     MaintenanceRecord {
-        string maintenance_id PK
-        string space_code FK
-        string reporter_id FK
-        string assigned_staff_id FK
-        string problem_description
-        string problem_type
-        datetime start_time
-        datetime completion_time
+        int recordId PK
+        string problemDescription
+        string problemType
+        datetime startTime
+        datetime completionTime
         string status
-        string result_note
+        string resultNote
     }
 
-    User ||--o{ BookingRequest : "submits"
-
-    Space ||--o{ BookingRequest : "is booked in"
-
-    User |o--o{ BookingRequest : "approves"
-
-    User |o--o{ BookingRequest : "checks in"
-
-    User |o--o{ BookingRequest : "completes"
-
-    Space ||--o{ SpaceFacility : "equipped with"
-
-    Facility ||--o{ SpaceFacility : "installed in"
-
-    User ||--o{ MaintenanceRecord : "reports"
-
-    User |o--o{ MaintenanceRecord : "assigned to"
-
-    Space ||--o{ MaintenanceRecord : "undergoes"
+    User ||--o{ Booking : submits
+    User ||--o{ Booking : approves
+    User ||--o{ Booking : "checks in"
+    User ||--o{ Booking : completes
+    Space  ||--o{ Booking : "is booked in"
+    Space  ||--o{ Facility : has
+    Space  ||--o{ MaintenanceRecord : "is subject of"
+    User   ||--o{ MaintenanceRecord : reports
+    User   ||--o{ MaintenanceRecord : assigned
 ```
 
 ---
 
 ## Entity Descriptions
 
-### 1. User
-Represents any person who interacts with the system. Each user has a unique university account identified by `user_id`. The `role` determines what actions a user is permitted to perform. The `account_status` controls whether the user can log in and make bookings.
-
-**Predefined Options:**
-- Role: `student`, `lecturer`, `teaching_assistant`, `facility_staff`, `department_administrator`, `facility_manager`
-- Account Status: `active`, `inactive`, `suspended`
-
-### 2. Space
-Represents a bookable physical space managed by the School. Each space is uniquely identified by a `space_code`. The `current_status` determines whether bookings are allowed. Spaces with status `under_maintenance`, `temporarily_closed`, or `retired` cannot be booked.
-
-**Predefined Options:**
-- Space Type: `auditorium`, `classroom`, `computer_laboratory`, `project_laboratory`, `meeting_room`, `student_workspace`
-- Current Status: `available`, `in_use`, `under_maintenance`, `temporarily_closed`, `retired`
-
-### 3. Facility
-Represents a type of equipment or amenity that can be present in a space. Facilities are predefined and managed centrally.
-
-**Predefined Options:**
-- Facility Name: `projector`, `whiteboard`, `microphone`, `computer`, `livestreaming_equipment`, `air_conditioner`
-
-### 4. SpaceFacility (Junction)
-Links spaces to the facilities they contain and records the quantity of each facility type per space. Resolves the many-to-many relationship between Space and Facility.
-
-### 5. BookingRequest
-Represents a request to use a space for a specific time period and purpose. Tracks the full lifecycle from submission through approval, check-in, and completion.
-
-**Lifecycle (Booking Status):**
-`pending` → `approved` | `rejected` | `cancelled`  
-`approved` → `checked_in` | `cancelled`  
-`checked_in` → `completed` | `no-show`
-
-**Predefined Options:**
-- Purpose: `lecture`, `examination`, `seminar`, `workshop`, `meeting`, `student_activity`, `administrative_event`
-- Booking Status: `pending`, `approved`, `rejected`, `cancelled`, `checked_in`, `completed`, `no-show`
-
-### 6. MaintenanceRecord
-Represents a reported maintenance issue for a space. Tracks the problem from reporting through assignment, resolution, and closure.
-
-**Lifecycle (Status):**
-`reported` → `in_progress` → `completed` | `cancelled`  
-`reported` → `cancelled`
-
-**Predefined Options:**
-- Problem Type: `broken_projector`, `air_conditioning_failure`, `damaged_furniture`, `cleaning_issue`, `network_problem`
-- Status: `reported`, `in_progress`, `completed`, `cancelled`
+| Entity | Description | Core Identifier |
+|--------|-------------|-----------------|
+| User | A person with a university account who interacts with the system. Roles include student, lecturer, TA, facility staff, department administrator, and facility manager. | `userId` |
+| Space | A bookable physical room or area managed by the School (auditorium, classroom, lab, meeting room, etc.). | `spaceCode` |
+| Facility | A piece of equipment or amenity available in a space (projector, whiteboard, computer, etc.). Quantity is tracked per space. | `facilityId` |
+| Booking | A request or confirmed session for using a space. Tracks the full lifecycle: request → approval → check-in → completion. | `bookingId` |
+| MaintenanceRecord | A reported problem or task for a space. Links the issue, reporter, assigned staff, and resolution. | `recordId` |
 
 ---
 
 ## Relationship Summary
 
-| Left Entity | Relationship | Right Entity | Cardinality | Description |
-|-------------|--------------|--------------|-------------|-------------|
-| User | submits | BookingRequest | 1 → N | A user can submit many booking requests. |
-| Space | is booked in | BookingRequest | 1 → N | A space can appear in many booking requests (but with no overlapping approved time ranges). |
-| User | approves | BookingRequest | 0..1 → N | A facility staff or manager can approve/reject many bookings. A booking may not yet have an approver. |
-| User | checks in | BookingRequest | 0..1 → N | A facility staff member can check in many bookings. A booking may not yet be checked in. |
-| User | completes | BookingRequest | 0..1 → N | A facility staff member can complete many bookings. A booking may not yet be completed. |
-| Space | equipped with | SpaceFacility | 1 → N | A space can be linked to many facility records. |
-| Facility | installed in | SpaceFacility | 1 → N | A facility type can be installed in many spaces. |
-| User | reports | MaintenanceRecord | 1 → N | Any user can report many maintenance issues. |
-| User | assigned to | MaintenanceRecord | 0..1 → N | A staff member can be assigned to many maintenance records. Not all records have an assignee. |
-| Space | undergoes | MaintenanceRecord | 1 → N | A space can have many maintenance records over time. |
+| Left Entity | Right Entity | Cardinality | Verb Phrase | Business Meaning |
+|-------------|-------------|-------------|-------------|------------------|
+| User | Booking | 1 → N | submits | A user submits zero or many booking requests. Each booking is submitted by exactly one user. |
+| User | Booking | 1 → N | approves | A facility staff member or manager approves/rejects zero or many bookings. Each approved/rejected booking records exactly one approver. |
+| User | Booking | 1 → N | checks in | A facility staff member performs check-in for zero or many bookings. Each check-in records exactly one staff member. |
+| User | Booking | 1 → N | completes | A facility staff member completes zero or many bookings. Each completed booking records exactly one staff member. |
+| Space | Booking | 1 → N | is booked in | A space is referenced by zero or many bookings. Each booking is for exactly one space. |
+| Space | Facility | 1 → N | has | A space contains zero or many facilities. Each facility belongs to exactly one space. |
+| Space | MaintenanceRecord | 1 → N | is subject of | A space is the subject of zero or many maintenance records. Each maintenance record is for exactly one space. |
+| User | MaintenanceRecord | 1 → N | reports | A user reports zero or many maintenance issues. Each maintenance record is reported by exactly one user. |
+| User | MaintenanceRecord | 1 → N | assigned | A facility staff member is assigned to zero or many maintenance records. Each maintenance record may be assigned to one staff member (optional). |
 
 ---
 
-## Traceability
+## Key Conceptual Design Decisions
 
-| Entity | Derived From Requirement |
-|--------|-------------------------|
-| User | §10: user information, roles, account status |
-| Space | §11: bookable space attributes, types, statuses |
-| Facility | §12: facilities available in each space |
-| SpaceFacility | §12: many-to-many link between Space and Facility |
-| BookingRequest | §13–16: booking submission, approval, check-in, completion |
-| MaintenanceRecord | §17: maintenance reporting and tracking |
+1. **Booking as a single entity with lifecycle attributes** — Approval, check-in, and completion details (approver, decision time, actual start time, etc.) are stored directly on the Booking entity rather than as separate entities. This reflects the 1:1 nature of these relationships and simplifies the model.
+
+2. **Facility as a dependent entity of Space** — A Facility record belongs to exactly one Space. Quantity is tracked to support spaces with multiple units of the same equipment type (e.g., 30 computers in a lab).
+
+3. **User participates in multiple roles** — The User entity records a single primary role. A user who is both a lecturer and facility staff (unlikely in practice but possible) would require separate accounts or a role-mapping table in a later logical design.
+
+4. **All bookings require approval** — No auto-approval paths exist. Every booking must transition through `pending → approved` before check-in.
