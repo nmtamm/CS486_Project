@@ -67,8 +67,10 @@ Successfully addressed feedback from Pull Request #2 (https://github.com/nmtamm/
 ## 5. Other Tasks Completed
 - Set up proper formatting for composite keys (comma-separated `PK, FK` markers to prevent Mermaid parsing errors).
 - Standardized relationship cardinalities and participation constraints in both the ERD diagram and the Relationship Summary table for strict consistency.
+- Added predefined values (enums/options) mapping to the pipeline to ensure status, type, and purpose options are explicitly documented in the ERD design.
+
 
 ## 6. Model Usage
 Used and evaluated two models for the task:
-- **Gemini Flash (with Google as provider):** This option took too long (more than 15 minutes for a single prompt) and cost too many tokens.
+- **Gemini Flash (with Google as provider) in opencode:** This option took too long (more than 15 minutes for a single prompt) and cost too many tokens.
 - **Big Pickle (from the default provider):** Used as the primary model.
