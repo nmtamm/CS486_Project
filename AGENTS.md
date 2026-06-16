@@ -18,6 +18,7 @@ Always follow this order:
 
 1. Analyze business requirements.
 2. Produce conceptual ERD using Crow's Foot notation.
+3. Convert the ERD into a relational schema with logical table definitions.
 
 Do not jump directly to DDL. The documents from the prior steps should be followed in the later steps.
 
@@ -25,6 +26,7 @@ Do not jump directly to DDL. The documents from the prior steps should be follow
 
 - `outputs/01-business-requirement-analysis-G02.md`
 - `outputs/02-conceptual-design-erd-G02.md`
+- `outputs/03-logical-design-G02.md`
 
 ## DBMS
 

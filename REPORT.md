@@ -74,3 +74,30 @@ Successfully addressed feedback from Pull Request #2 (https://github.com/nmtamm/
 Used and evaluated two models for the task:
 - **Gemini Flash (with Google as provider) in opencode:** This option took too long (more than 15 minutes for a single prompt) and cost too many tokens.
 - **Big Pickle (from the default provider):** Used as the primary model.
+
+---
+
+# Student Work Report
+
+**Name:** Trần Trung Hậu
+**Student ID:** 24125055
+**Task:** Step 3 — Logical Database Design
+
+---
+
+## Workflow
+1. Explore existing project artifacts and current task
+2. Define initial Output document structure
+3. Define Workflow execution order
+4. Generate `INSTRUCTION.md` and required artifact
+5. Redefine the Output document structure
+6. Refine `INSTRUCTION.md` based on output artifact until the output looks "good"
+
+## Model Usage
+**Big Pickle (from the default provider):** Used as the primary model.
+
+## Response to PR #8 feedback
+1. **Improve the readability of Relational Schema**
+    - Changed the Mermaid diagram type from `classDiagram` to `flowchart LR` to produce better resemblance a physical relational schema representation
+    - Add visual key indicators and Text Formatting Rules for easier identify keys
+2. **Remove unnecessary section 2. Detail table schema**
