@@ -25,7 +25,7 @@ Create or update the following files:
 1. `outputs/01-business-req-analysis-G02.md`
 2. `outputs/02-erd-design-G02.md`
 3. `outputs/03-logical-design-G02.md`
-4. `outputs/04-database-design-validation-G02.md`
+4. `outputs/04-design-validation-G02.md`
 Do not skip any Markdown file.
 
 ---

@@ -118,3 +118,6 @@ Used and evaluated two models for the task:
 
 ## Model Usage
 **Big Pickle (from the default provider):** Used as the primary model.
+
+## Response to Issue #10
+Rewrite instruction for step 01 and use Big Pickle to regenerate the output for this step
