@@ -50,7 +50,7 @@ erDiagram
         datetime requested_end_time
         varchar purpose "Values: lecture; examination; seminar; workshop; meeting; student_activity; administrative_event"
         int expected_participants
-        varchar booking_status "Values: pending; approved; rejected; cancelled; checked_in; completed; no-show"
+        varchar booking_status "Values: pending; approved; rejected; cancelled; checked_in; completed; no_show"
         varchar approver_id FK
         datetime decision_time
         nvarchar decision_note
@@ -141,12 +141,12 @@ Represents a request to use a space for a specific time period and purpose. Trac
 
 **Lifecycle (Booking Status):**
 `pending` → `approved` | `rejected` | `cancelled` <br>
-`approved` → `checked_in` | `cancelled` | `no-show` <br>
+`approved` → `checked_in` | `cancelled` | `no_show` <br>
 `checked_in` → `completed` 
 
 **Predefined Options:**
 - Purpose: `lecture`, `examination`, `seminar`, `workshop`, `meeting`, `student_activity`, `administrative_event`
-- Booking Status: `pending`, `approved`, `rejected`, `cancelled`, `checked_in`, `completed`, `no-show`
+- Booking Status: `pending`, `approved`, `rejected`, `cancelled`, `checked_in`, `completed`, `no_show`
 
 **Constraints (from Business Rules):**
 - A space under maintenance, temporarily closed, or retired cannot be booked (BR-06).
@@ -157,7 +157,7 @@ Represents a request to use a space for a specific time period and purpose. Trac
 - All booking requests require approval from a facility staff member or facility manager (BR-09, BR-14).
 - Only facility staff can check in a booking (BR-15).
 - Only facility staff can complete a booking (BR-16).
-- A booking that reaches its requested end time without being checked in is marked as no-show (BR-17).
+- A booking that reaches its requested end time without being checked in is marked as no_show (BR-17).
 - Historical records must be maintained indefinitely for reporting (BR-22).
 
 ### 6. MaintenanceRecord
