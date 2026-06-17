@@ -25,7 +25,7 @@ Create or update the following files:
 1. `outputs/01-business-req-analysis-G02.md`
 2. `outputs/02-erd-design-G02.md`
 3. `outputs/03-logical-design-G02.md`
-
+4. `outputs/04-database-design-validation-G02.md`
 Do not skip any Markdown file.
 
 ---
@@ -37,3 +37,4 @@ Do not skip any Markdown file.
 | 1 | [Business Requirement Analysis](step-01-business-requirement-analysis/INSTRUCTION.md)
 | 2 | [Conceptual Design / ERD](step-02-conceptual-design-erd/INSTRUCTION.md)
 | 3 | [Logical Database Design](step-03-logical-database-design/INSTRUCTION.md)
+| 4 | [Database Design Validation](step-04-database-design-validation/INSTRUCTION.md)
