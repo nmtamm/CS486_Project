@@ -28,7 +28,7 @@ Do not jump directly to DDL. The documents from the prior steps should be follow
 - `outputs/01-business-requirement-analysis-G02.md`
 - `outputs/02-conceptual-design-erd-G02.md`
 - `outputs/03-logical-design-G02.md`
-- `\outputs/04-design-validation-G02.md`
+- `outputs/04-design-validation-G02.md`
 
 ## DBMS
 
