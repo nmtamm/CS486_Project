@@ -29,6 +29,7 @@ Save the final document to `outputs/01-business-req-analysis-G02.md`. It must co
   - **Core Identity:** What uniquely identifies the object from a business standpoint (e.g., Unique Code, Unique Email).
   - **Key Attributes:** A list of mandatory and optional business fields that must be captured.
   - **Predefined Options (Enums):** Closed-loop list of valid choices for types, categories, or statuses related to this entity.
+   -**No hallucination:** Follow the business requirement strictly, do not create any unnecessary or unrelated entities for any reason.
 
 ### 4. Relationships & Cardinalities
 - Identify all business-level relationships between the entities listed in Section 3.

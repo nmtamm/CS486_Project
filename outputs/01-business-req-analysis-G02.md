@@ -4,14 +4,14 @@
 
 ## 1. Business Purpose
 
-**Core problem:** The School of Computer Science manages shared physical spaces (auditoriums, classrooms, computer labs, project labs, meeting rooms, student workspaces) using a manual process of emails, phone calls, spreadsheets, and shared calendars. As the volume of classes, student projects, workshops, seminars, and academic events grows, this manual approach causes scheduling conflicts, inability to prevent booking of unavailable spaces, and lack of centralized historical records.
+**Core problem:** The School of Computer Science manages shared physical spaces (auditoriums, classrooms, computer laboratories, project laboratories, meeting rooms, and student workspaces) using a manual process of emails, phone calls, spreadsheets, and shared calendars. As the volume of classes, student projects, workshops, seminars, and academic events grows, this manual approach causes scheduling conflicts, inability to prevent booking of unavailable spaces, lack of centralized historical records, and difficulty managing maintenance and incident reporting.
 
 **Primary objectives:**
 - Automate space booking requests, approvals, check-in, and check-out workflows.
-- Prevent overlapping bookings for the same space through conflict detection.
+- Prevent overlapping bookings for the same space through automated conflict detection.
 - Prevent booking of spaces that are under maintenance, closed, or retired.
-- Track maintenance activities and link them to spaces.
-- Preserve full historical records of bookings and maintenance for reporting and auditing.
+- Track maintenance activities and link them to specific spaces and reporters.
+- Preserve full historical records of bookings, usage sessions, and maintenance for reporting and auditing.
 
 **Scope:**
 - **In scope:** User management, space and facility catalog management, booking request submission & approval workflow, check-in/check-out process, maintenance record management, booking conflict prevention, booking and maintenance history viewing.
@@ -38,13 +38,10 @@
 |--------|---------------|----------------|---------------------------|
 | User | User ID | Full Name, Email, Phone Number, Role, Department, Account Status | Role: student, lecturer, teaching_assistant, facility_staff, department_administrator, facility_manager. Account Status: active, inactive, suspended |
 | Space | Space Code | Space Name, Space Type, Building, Floor, Room Number, Capacity, Current Status, Usage Policy | Space Type: auditorium, classroom, computer_laboratory, project_laboratory, meeting_room, student_workspace. Status: available, in_use, under_maintenance, temporarily_closed, retired |
-| Facility | Facility ID | Facility Name, Description | — |
+| Facility | Facility ID | Facility Name, Description | Facily Type: projector, whiteboard, microphone, computer, livestreaming equipment, air_conditioner |
 | SpaceFacility | (Space Code + Facility ID) | Quantity | — |
-| BookingRequest | Booking ID | Requester (FK to User), Space (FK to Space), Requested Start Time, Requested End Time, Purpose of Use, Expected Number of Participants, Booking Type, Status, Created Date | Booking Type: lecture, examination, seminar, workshop, meeting, student_activity, administrative_event. Status: pending, approved, rejected, cancelled, checked_in, completed, no_show |
-| ApprovalDecision | Decision ID | Booking (FK to BookingRequest), Decision Maker (FK to User), Decision Time, Decision (approved / rejected), Decision Note, Rejection Reason (if rejected) | Decision: approved, rejected |
-| CheckIn | Check-in ID | Booking (FK to BookingRequest), Check-in Staff (FK to User), Actual Start Time, Initial Condition | — |
-| CheckOut | Check-out ID | Booking (FK to BookingRequest), Check-out Staff (FK to User), Actual End Time, Final Condition, Usage Notes | — |
-| MaintenanceRecord | Maintenance ID | Space (FK to Space), Reporter (FK to User), Assigned Staff (FK to User), Problem Description, Start Time, Completion Time, Status, Result Note, Related Booking (FK to BookingRequest, optional) | Status: reported, in_progress, completed, cancelled |
+| BookingRequest | Booking ID | Space (FK), Requester (FK), Requested Start Time, Requested End Time, Purpose, Expected Participants, Booking Status, Approver (FK), Decision Time, Decision Note, Rejection Reason, Actual Start Time, Checked In By (FK), Initial Condition, Actual End Time, Completed By (FK), Final Condition, Usage Notes | Purpose: lecture, examination, seminar, workshop, meeting, student_activity, administrative_event. Booking Status: pending, approved, rejected, cancelled, checked_in, completed, no_show |
+| MaintenanceRecord | Maintenance ID | Space (FK), Reporter (FK), Assigned Staff (FK), Problem Description, Problem Type, Start Time, Completion Time, Status, Result Note | Status: reported, in_progress, completed, cancelled. Problem type: broken projectors, air-conditioning failure, damaged furniture, cleaning issues, or network problems |
 
 ---
 
@@ -66,7 +63,6 @@ A space has many maintenance records.
 A maintenance record is for exactly one space.
 A user reports many maintenance records.
 A user is assigned to many maintenance records (as assigned staff).
-A maintenance record may optionally reference a booking request (if reported during a session).
 
 ---
 
@@ -88,11 +84,10 @@ A maintenance record may optionally reference a booking request (if reported dur
 | BR-12 | Any user role may book any space type (no role-based eligibility restrictions). |
 | BR-13 | Maintenance record statuses: reported, in_progress, completed, cancelled. |
 | BR-14 | When a space's status is set to under_maintenance via a maintenance record, the system must prevent new approved bookings for that space until the maintenance is completed. |
-| BR-15 | A maintenance record may optionally be linked to a specific booking request (for problems reported during a session). |
-| BR-16 | Check-in records the actual start time, the identity of the staff member performing the check-in, and the initial condition of the space. |
-| BR-17 | Check-out records the actual end time, final condition of the space, and usage notes. It is performed by facility staff. |
-| BR-18 | If the requester does not check in, the booking status moves to no_show. (Transition from approved → no_show.) |
-| BR-19 | The system must maintain full historical records of all bookings, approval decisions, check-in/check-out records, and maintenance activities indefinitely for reporting. |
-| BR-20 | A rejected booking must store the rejection reason. |
-| BR-21 | The facility manager can manage the space catalog (add, update, or retire spaces and their facilities). |
-| BR-22 | Each space may have multiple facilities; each facility type may be installed in multiple spaces (M:N relationship via SpaceFacility with quantity). |
+| BR-15 | Check-in records the actual start time, the identity of the staff member performing the check-in, and the initial condition of the space. |
+| BR-16 | Check-out records the actual end time, final condition of the space, and usage notes. It is performed by facility staff. |
+| BR-17 | If the requester does not check in, the booking status moves to no_show. (Transition from approved → no_show.) |
+| BR-18 | The system must maintain full historical records of all bookings, approval decisions, check-in/check-out records, and maintenance activities indefinitely for reporting. |
+| BR-19 | A rejected booking must store the rejection reason. |
+| BR-20 | The facility manager can manage the space catalog (add, update, or retire spaces and their facilities). |
+| BR-21 | Each space may have multiple facilities; each facility type may be installed in multiple spaces (M:N relationship via SpaceFacility with quantity). |

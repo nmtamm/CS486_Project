@@ -101,3 +101,23 @@ Used and evaluated two models for the task:
     - Changed the Mermaid diagram type from `classDiagram` to `flowchart LR` to produce better resemblance a physical relational schema representation
     - Add visual key indicators and Text Formatting Rules for easier identify keys
 2. **Remove unnecessary section 2. Detail table schema**
+
+---
+
+# Student Work Report
+
+**Name:** Nguyễn Minh Tâm
+**Student ID:** 24125042
+**Task:** Step 4 — Validate database design
+
+## Workflow
+1. Check if all entities are included or not
+2. Check if all relationship are clearly explained in the relational schema
+3. Check if all cardinalities are clearly included in the ERD
+4. Check if the constraints are mentioned in relational schema or not
+
+## Model Usage
+**Big Pickle (from the default provider):** Used as the primary model.
+
+## Response to Issue #10
+Rewrite instruction for step 01 and use Big Pickle to regenerate the output for this step
