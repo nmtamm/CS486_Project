@@ -39,6 +39,7 @@ Create a Mermaid diagram that visually represents the relational schema using ho
     - Mark attributes using the following prefixes:
       - `🔑` → Primary Key (`PK`)
       - `🔗` → Foreign Key (`FK`)
+      - `⭐` → Candidate Key / Unique Key (`UK`)
     - Multiple markers are allowed, use space character ` ` to seperate, foreign key always follows primary key.
     - Example: `🔑 user_id`, `🔗 requester_id`, `🔑 🔗 facility_id`
 
@@ -99,27 +100,50 @@ Present a Markdown table with the following columns:
 
 **Guidelines:**
 
-- Use the original `BR-XX` identifiers from `outputs/01-business-req-analysis-G02.md`.
-- Identify the most appropriate enforcement mechanism for each rule:
-  - `PRIMARY KEY`
-  - `FOREIGN KEY`
-  - `UNIQUE`
-  - `CHECK`
-  - `NOT NULL`
-  - `DEFAULT`
-  - `Composite Key`
-  - `Application Logic`
-  - `Trigger / Stored Procedure`
-- If a rule cannot be fully enforced using standard relational constraints, explicitly classify it as `Application Logic` or `Trigger / Stored Procedure`.
-- Every business rule from Step 1 must appear exactly once.
-- Ensure consistency with the tables, keys, and constraints defined in Sections 1 and 2.
+1. **Business Rule Source**
+   - Use only the original `BR-XX` identifiers defined in `outputs/01-business-req-analysis-G02.md`.
+   - Do not create, rename, merge, split, or reorder business rules.
+   - Preserve the original business rule descriptions whenever possible.
 
-Example:
+2. **Coverage Requirements**
+   - Every business rule from Step 1 must appear exactly once in this section.
+   - No business rule may be omitted.
+   - No duplicate entries are allowed.
 
-- Unique user email → `UNIQUE`
-- Booking status values → `CHECK`
-- No overlapping approved bookings → `Trigger / Stored Procedure`
-- Space under maintenance cannot be booked → `Application Logic`
+3. **Enforcement Mechanism Selection**
+   - Assign the most appropriate enforcement mechanism to each business rule.
+   - Only the following values are allowed:
+
+     - `PRIMARY KEY`
+     - `FOREIGN KEY`
+     - `UNIQUE`
+     - `CHECK`
+     - `NOT NULL`
+     - `DEFAULT`
+     - `Composite Key`
+     - `Application Logic`
+     - `Trigger / Stored Procedure`
+
+   - If multiple mechanisms are required, separate them using commas. (e.g., `CHECK, DEFAULT`)
+   
+4. **Mechanism Selection Priority**
+    Use the following priority order whenever applicable:
+    - Entity uniqueness → `PRIMARY KEY`
+    - Relationship dependency → `FOREIGN KEY`
+    - Attribute uniqueness → `UNIQUE`
+    - Predefined values or ranges → `CHECK`
+    - Mandatory values → `NOT NULL`
+    - Automatically assigned values → `DEFAULT`
+    - Multi-column identifiers → `Composite Key`
+    - Cross-row or temporal validations → `Trigger / Stored Procedure`
+    - Business processes that cannot be enforced at the database level → `Application Logic`
+
+5. **Relation and Attribute Mapping**
+    For every business rule:
+    - Identify all related relations.
+    - Identify all related attributes.
+    - Use the exact names defined in outputs/02-erd-design-G02.md.
+    - Do not invent new relations or attributes.
 
 ---
 
