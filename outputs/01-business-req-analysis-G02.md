@@ -41,8 +41,7 @@
 | Facility | Facility ID | Facility Name, Description | Facily Type: projector, whiteboard, microphone, computer, livestreaming equipment, air_conditioner |
 | SpaceFacility | (Space Code + Facility ID) | Quantity | — |
 | BookingRequest | Booking ID | Space (FK), Requester (FK), Requested Start Time, Requested End Time, Purpose, Expected Participants, Booking Status, Approver (FK), Decision Time, Decision Note, Rejection Reason, Actual Start Time, Checked In By (FK), Initial Condition, Actual End Time, Completed By (FK), Final Condition, Usage Notes | Purpose: lecture, examination, seminar, workshop, meeting, student_activity, administrative_event. Booking Status: pending, approved, rejected, cancelled, checked_in, completed, no_show |
-| MaintenanceRecord | Maintenance ID | Space (FK), Reporter (FK), Assigned Staff (FK), Problem Description, Problem Type, Start Time, Completion Time, Status, Result Note | Status: reported, in_progress, completed, cancelled. Problem type: broken projectors, air-conditioning failure,
-damaged furniture, cleaning issues, or network problems |
+| MaintenanceRecord | Maintenance ID | Space (FK), Reporter (FK), Assigned Staff (FK), Problem Description, Problem Type, Start Time, Completion Time, Status, Result Note | Status: reported, in_progress, completed, cancelled. Problem type: broken projectors, air-conditioning failure, damaged furniture, cleaning issues, or network problems |
 
 ---
 
@@ -64,7 +63,6 @@ A space has many maintenance records.
 A maintenance record is for exactly one space.
 A user reports many maintenance records.
 A user is assigned to many maintenance records (as assigned staff).
-A maintenance record may optionally reference a booking request (if reported during a session).
 
 ---
 
@@ -86,11 +84,10 @@ A maintenance record may optionally reference a booking request (if reported dur
 | BR-12 | Any user role may book any space type (no role-based eligibility restrictions). |
 | BR-13 | Maintenance record statuses: reported, in_progress, completed, cancelled. |
 | BR-14 | When a space's status is set to under_maintenance via a maintenance record, the system must prevent new approved bookings for that space until the maintenance is completed. |
-| BR-15 | A maintenance record may optionally be linked to a specific booking request (for problems reported during a session). |
-| BR-16 | Check-in records the actual start time, the identity of the staff member performing the check-in, and the initial condition of the space. |
-| BR-17 | Check-out records the actual end time, final condition of the space, and usage notes. It is performed by facility staff. |
-| BR-18 | If the requester does not check in, the booking status moves to no_show. (Transition from approved → no_show.) |
-| BR-19 | The system must maintain full historical records of all bookings, approval decisions, check-in/check-out records, and maintenance activities indefinitely for reporting. |
-| BR-20 | A rejected booking must store the rejection reason. |
-| BR-21 | The facility manager can manage the space catalog (add, update, or retire spaces and their facilities). |
-| BR-22 | Each space may have multiple facilities; each facility type may be installed in multiple spaces (M:N relationship via SpaceFacility with quantity). |
+| BR-15 | Check-in records the actual start time, the identity of the staff member performing the check-in, and the initial condition of the space. |
+| BR-16 | Check-out records the actual end time, final condition of the space, and usage notes. It is performed by facility staff. |
+| BR-17 | If the requester does not check in, the booking status moves to no_show. (Transition from approved → no_show.) |
+| BR-18 | The system must maintain full historical records of all bookings, approval decisions, check-in/check-out records, and maintenance activities indefinitely for reporting. |
+| BR-19 | A rejected booking must store the rejection reason. |
+| BR-20 | The facility manager can manage the space catalog (add, update, or retire spaces and their facilities). |
+| BR-21 | Each space may have multiple facilities; each facility type may be installed in multiple spaces (M:N relationship via SpaceFacility with quantity). |

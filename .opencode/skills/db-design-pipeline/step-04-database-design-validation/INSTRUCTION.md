@@ -35,3 +35,6 @@ Step 2: Domain and Business Logic Constraints
 
 ### 3. Issues
 Write down any issue that still remained here.
+
+### 4. Notes
+Since these steps are unrelated to SQL yet, do not try to check for any requirements that are SQL specified (such that using CHECK for predefined values)
