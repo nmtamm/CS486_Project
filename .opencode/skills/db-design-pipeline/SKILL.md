@@ -26,6 +26,7 @@ Create or update the following files:
 2. `outputs/02-erd-design-G02.md`
 3. `outputs/03-logical-design-G02.md`
 4. `outputs/04-design-validation-G02.md`
+5. `outputs/05-db-definition-G02.sql`
 Do not skip any Markdown file.
 
 ---
@@ -38,3 +39,4 @@ Do not skip any Markdown file.
 | 2 | [Conceptual Design / ERD](step-02-conceptual-design-erd/INSTRUCTION.md)
 | 3 | [Logical Database Design](step-03-logical-database-design/INSTRUCTION.md)
 | 4 | [Database Design Validation](step-04-database-design-validation/INSTRUCTION.md)
+| 5 | [Database Implementation](step-05-database-implementation/INSTRUCTION.md)

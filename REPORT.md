@@ -121,3 +121,19 @@ Used and evaluated two models for the task:
 
 ## Response to Issue #10
 Rewrite instruction for step 01 and use Big Pickle to regenerate the output for this step
+
+---
+
+# Student Work Report
+
+**Name:** Nguyễn Minh Tâm
+**Student ID:** 24125042
+**Task:** Step 5 - Database Implementation
+
+## Workflow
+1. Create database
+2. Create tables
+3. Add constraints and relationships between tables
+
+## Model Usage
+**Big Pickle (from the default provider):** Used as the primary model.
