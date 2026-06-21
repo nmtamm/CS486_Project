@@ -22,8 +22,8 @@ GO
 -- 3. Create Primary Tables (no foreign keys)
 -- ============================================================
 
--- 3.1. User
-CREATE TABLE User (
+-- 3.1. Users
+CREATE TABLE Users (
     user_id            VARCHAR(20)     NOT NULL,
     full_name          NVARCHAR(100)   NOT NULL,
     email              VARCHAR(255)    NOT NULL,
@@ -205,14 +205,40 @@ ALTER TABLE SpaceFacility ADD FOREIGN KEY (facility_id) REFERENCES Facility(faci
 
 -- 5.2. BookingRequest foreign keys
 ALTER TABLE BookingRequest ADD FOREIGN KEY (space_code) REFERENCES Space(space_code);
-ALTER TABLE BookingRequest ADD FOREIGN KEY (requester_id) REFERENCES User(user_id);
-ALTER TABLE BookingRequest ADD FOREIGN KEY (approver_id) REFERENCES User(user_id);
-ALTER TABLE BookingRequest ADD FOREIGN KEY (checked_in_by) REFERENCES User(user_id);
-ALTER TABLE BookingRequest ADD FOREIGN KEY (completed_by) REFERENCES User(user_id);
+ALTER TABLE BookingRequest ADD FOREIGN KEY (requester_id) REFERENCES Users(user_id);
+ALTER TABLE BookingRequest ADD FOREIGN KEY (approver_id) REFERENCES Users(user_id);
+ALTER TABLE BookingRequest ADD FOREIGN KEY (checked_in_by) REFERENCES Users(user_id);
+ALTER TABLE BookingRequest ADD FOREIGN KEY (completed_by) REFERENCES Users(user_id);
 
 -- 5.3. MaintenanceRecord foreign keys
 ALTER TABLE MaintenanceRecord ADD FOREIGN KEY (space_code) REFERENCES Space(space_code);
-ALTER TABLE MaintenanceRecord ADD FOREIGN KEY (reporter_id) REFERENCES User(user_id);
-ALTER TABLE MaintenanceRecord ADD FOREIGN KEY (assigned_staff_id) REFERENCES User(user_id);
+ALTER TABLE MaintenanceRecord ADD FOREIGN KEY (reporter_id) REFERENCES Users(user_id);
+ALTER TABLE MaintenanceRecord ADD FOREIGN KEY (assigned_staff_id) REFERENCES Users(user_id);
 
+GO
+
+-- ============================================================
+-- 6. Triggers for Business Rule Enforcement
+-- ============================================================
+
+-- 6.1. BR-14: Prevent new approved bookings for a space under maintenance
+CREATE TRIGGER TR_BookingRequest_PreventMaintenanceBooking
+ON BookingRequest
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF EXISTS (
+        SELECT 1 
+        FROM inserted i
+        JOIN Space s ON i.space_code = s.space_code
+        WHERE i.booking_status = 'approved' 
+          AND s.current_status = 'under_maintenance'
+    )
+    BEGIN
+        RAISERROR ('Cannot book or approve a booking for a space that is under maintenance (BR-14).', 16, 1);
+        ROLLBACK TRANSACTION;
+    END
+END;
 GO

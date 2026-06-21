@@ -137,3 +137,21 @@ Rewrite instruction for step 01 and use Big Pickle to regenerate the output for 
 
 ## Model Usage
 **Big Pickle (from the default provider):** Used as the primary model.
+
+---
+
+# Student Work Report
+
+**Name:** Võ Huy Dâng
+**Student ID:** 20125022
+**Task:** Step 5 - Database Implementation & ERD Refinement
+
+## Tasks
+1. Identify and resolve inconsistencies/hallucinations in conceptual design constraints.
+2. Formulate and implement trigger-based validation rules for database constraints (BR-14).
+3. Validate database initialization and schema creation in SQL Server.
+4. Change table Users from User in the database definition file to avoid SQL Server reserved keyword.
+
+## Model Usage
+**Big Pickle (from the default provider):** Used as the primary model.
+
