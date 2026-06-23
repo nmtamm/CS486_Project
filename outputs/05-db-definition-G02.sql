@@ -217,28 +217,3 @@ ALTER TABLE MaintenanceRecord ADD FOREIGN KEY (assigned_staff_id) REFERENCES Use
 
 GO
 
--- ============================================================
--- 6. Triggers for Business Rule Enforcement
--- ============================================================
-
--- 6.1. BR-14: Prevent new approved bookings for a space under maintenance
-CREATE TRIGGER TR_BookingRequest_PreventMaintenanceBooking
-ON BookingRequest
-AFTER INSERT, UPDATE
-AS
-BEGIN
-    SET NOCOUNT ON;
-
-    IF EXISTS (
-        SELECT 1 
-        FROM inserted i
-        JOIN Space s ON i.space_code = s.space_code
-        WHERE i.booking_status = 'approved' 
-          AND s.current_status = 'under_maintenance'
-    )
-    BEGIN
-        RAISERROR ('Cannot book or approve a booking for a space that is under maintenance (BR-14).', 16, 1);
-        ROLLBACK TRANSACTION;
-    END
-END;
-GO
