@@ -148,9 +148,8 @@ Rewrite instruction for step 01 and use Big Pickle to regenerate the output for 
 
 ## Tasks
 1. Identify and resolve inconsistencies/hallucinations in conceptual design constraints.
-2. Formulate and implement trigger-based validation rules for database constraints (BR-14).
-3. Validate database initialization and schema creation in SQL Server.
-4. Change table Users from User in the database definition file to avoid SQL Server reserved keyword.
+2. Validate database initialization and schema creation in SQL Server.
+3. Change table Users from User in the database definition file to avoid SQL Server reserved keyword.
 
 ## Model Usage
 **Big Pickle (from the default provider):** Used as the primary model.
