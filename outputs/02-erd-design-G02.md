@@ -152,8 +152,6 @@ Represents a request to use a space for a specific time period and purpose. Trac
 - A space under maintenance, temporarily closed, or retired cannot be booked (BR-06).
 - No two approved bookings may overlap in time for the same space (BR-10).
 - Expected participants must not exceed space capacity (BR-11).
-- Maximum booking duration is 4 hours (BR-12).
-- Bookings can be made up to 6 months in advance (BR-13).
 - All booking requests require approval from a facility staff member or facility manager (BR-09, BR-14).
 - Only facility staff can check in a booking (BR-15).
 - Only facility staff can complete a booking (BR-16).

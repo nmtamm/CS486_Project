@@ -121,3 +121,36 @@ Used and evaluated two models for the task:
 
 ## Response to Issue #10
 Rewrite instruction for step 01 and use Big Pickle to regenerate the output for this step
+
+---
+
+# Student Work Report
+
+**Name:** Nguyễn Minh Tâm
+**Student ID:** 24125042
+**Task:** Step 5 - Database Implementation
+
+## Workflow
+1. Create database
+2. Create tables
+3. Add constraints and relationships between tables
+
+## Model Usage
+**Big Pickle (from the default provider):** Used as the primary model.
+
+---
+
+# Student Work Report
+
+**Name:** Võ Huy Dâng
+**Student ID:** 20125022
+**Task:** Step 5 - Database Implementation & ERD Refinement
+
+## Tasks
+1. Identify and resolve inconsistencies/hallucinations in conceptual design constraints.
+2. Validate database initialization and schema creation in SQL Server.
+3. Change table Users from User in the database definition file to avoid SQL Server reserved keyword.
+
+## Model Usage
+**Big Pickle (from the default provider):** Used as the primary model.
+
