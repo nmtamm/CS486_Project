@@ -1,34 +1,36 @@
-# Báo cáo tiến độ
+# Student Work Report
 
-## Những gì đã làm
+**Name:** Trịnh Võ Nam Kiệt
 
-### 1. Cấu trúc lại pipeline skill
-- Tổ chức lại `.opencode/skills/db-design-pipeline/` thành mỗi bước một thư mục con:
-  - `step-01/INSTRUCTION.md`, `TEMPLATE.md`, `EXAMPLE.md`
-  - `step-02/INSTRUCTION.md`
-### 2. Bước 1 — Phân tích yêu cầu nghiệp vụ (hoàn thành, cần review)
+**Student ID:** 24125013
 
-Tài liệu gồm đúng 4 phần:
+**Task:** Step 1 — Business Requirement Analysis
 
-| Phần                                       | Mô tả                                                                                                      |
-| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
-| **1. Business Purpose**                    | Xác định vấn đề cốt lõi, mục tiêu chính và phạm vi của hệ thống.                                           |
-| **2. Actors**                              | Liệt kê các vai trò người dùng, trách nhiệm và tương tác với hệ thống.                                     |
-| **3. Business Data Entities & Attributes** | Xác định các thực thể chính, định danh, thuộc tính bắt buộc/không bắt buộc và các giá trị định sẵn (enum). |
-| **4. Business Rules**                      | Trích xuất các ràng buộc, chính sách, quy tắc nghiệp vụ, lifecycle và state transition.                    |
+---
 
-### 3. Sử dụng vòng lặp tương tác
-Trong quá trình sinh tài liệu, các điểm còn mơ hồ đã được giải quyết thông qua công cụ `question` trước khi hoàn thiện các quy tắc nghiệp vụ (business rules).
+## 1. Structure
 
-### 4. Thực thi workflow
-Pipeline tuân theo quy trình 3 bước nghiêm ngặt:
-1. **Quét sâu nội bộ** — xác định các điểm còn mơ hồ, thiếu sót.
-2. **Làm rõ tương tác** — trao đổi với người dùng để giải quyết các điểm còn mơ hồ.
-3. **Tổng hợp & xuất file** — tổng hợp và xuất tài liệu 4 phần.
+The [output document](outputs/01-business-req-analysis-G02.md) consists of 4 sections:
 
-### 5. Tham khảo
-- **Prompt**: [INSTRUCTION.md](.opencode/skills/db-design-pipeline/step-01-business-requirement-analysis/INSTRUCTION.md)
-- **Kết quả**: [01-business-requirement-analysis.md](outputs/01-business-req-analysis-G02.md)
+| Section                                    | Description                                                                                               |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| **1. Business Purpose**                    | Identifies the core problem, main objectives, and scope of the system.                                    |
+| **2. Actors**                              | Lists user roles, responsibilities, and interactions with the system.                                     |
+| **3. Business Data Entities & Attributes** | Identifies main entities, identifiers, required/optional attributes, and predefined values (enum).        |
+| **4. Business Rules**                      | Extracts constraints, policies, business rules, lifecycle, and state transitions.                         |
+
+## 2. Iterative clarification loop
+Ambiguous points were resolved via the `question` tool before finalizing business rules.
+
+## 3. Workflow execution
+Pipeline follows a strict 3-step process:
+1. **Internal deep scan** — identify ambiguities and gaps.
+2. **Interactive clarification** — discuss with user to resolve ambiguities.
+3. **Compile & export** — produce the 4-section document.
+
+## 4. References
+- **Prompt:** [INSTRUCTION.md](.opencode/skills/db-design-pipeline/step-01-business-requirement-analysis/INSTRUCTION.md)
+- **Output:** [01-business-requirement-analysis.md](outputs/01-business-req-analysis-G02.md)
 
 ---
 
@@ -80,7 +82,9 @@ Used and evaluated two models for the task:
 # Student Work Report
 
 **Name:** Trần Trung Hậu
+
 **Student ID:** 24125055
+
 **Task:** Step 3 — Logical Database Design
 
 ---
@@ -127,7 +131,9 @@ Rewrite instruction for step 01 and use Big Pickle to regenerate the output for 
 # Student Work Report
 
 **Name:** Nguyễn Minh Tâm
+
 **Student ID:** 24125042
+
 **Task:** Step 5 - Database Implementation
 
 ## Workflow
@@ -143,7 +149,9 @@ Rewrite instruction for step 01 and use Big Pickle to regenerate the output for 
 # Student Work Report
 
 **Name:** Võ Huy Dâng
+
 **Student ID:** 20125022
+
 **Task:** Step 5 - Database Implementation & ERD Refinement
 
 ## Tasks
@@ -158,95 +166,110 @@ Rewrite instruction for step 01 and use Big Pickle to regenerate the output for 
 
 # Student Work Report
 
-**Name:** Trần Trung Hậu
-**Student ID:** 24125055
-**Task:** Step 6 - Sample Data Preparation
+**Name:** Trần Trung Hậu & Trịnh Võ Nam Kiệt
 
-## Tasks
-Generate sample data for exceptional cases testing
+**Student ID:** 24125055 & 24125013
+
+**Task:** Step 6 — Sample Data & Test Cases
+
+## Deliverables
+
+Step 6 produces **3 separate SQL files** built from the DDL in Step 5:
+
+| File | Purpose |
+|------|---------|
+| `06-sample-data-G02.sql` | Realistic sample data covering all valid tables, roles, types, and statuses |
+| `06-normal-testcases-G02.sql` | SELECT queries to verify data integrity and constraint acceptance (expected: OK) |
+| `06-exceptional-testcases-G02.sql` | INSERT statements that violate constraints (expected: FAIL) |
+
+## Normal Test Cases
+
+These SELECT queries verify that the database **accepts** valid data. Categories:
+
+| Category | Description |
+|----------|-------------|
+| Record counts | Verify each table has the expected number of rows |
+| FK integrity (no orphans) | Check that all foreign key values reference existing parent records |
+| CHECK constraint acceptance | Verify valid enum values, positive numbers, and data ranges are accepted |
+| UNIQUE constraint | Verify unique columns (e.g., email) have no duplicates |
+| Business logic | Verify status coverage, time ordering, and lifecycle completeness |
+
+## Exceptional Test Cases
+
+These INSERT statements verify the database **rejects** invalid data. Categories:
+
+| Constraint Type | Description |
+|----------------|-------------|
+| CHECK — invalid enum values | Out-of-range roles, statuses, types, and purpose values |
+| CHECK — numeric/business rules | Zero/negative capacity, quantity, participants; backward time ranges |
+| CHECK — conditional logic | Rejected booking without rejection reason; completed maintenance without completion info |
+| UNIQUE — duplicate email | Attempted insert with an existing email address |
+| FOREIGN KEY — non-existent reference | Reference to non-existent primary keys across all FK relationships |
+
+## Constraint Coverage Summary
+
+| Implemented Constraint | Normal Test | Exception Test |
+|------------------------|-------------|----------------|
+| CHECK role in (...) | TC-N13 | TC-01 |
+| CHECK account_status in (...) | TC-N14 | TC-02 |
+| UNIQUE email | TC-N15 | TC-03 |
+| CHECK space_type in (...) | TC-N16 | TC-04 |
+| CHECK current_status in (...) | TC-N17 | TC-05 |
+| CHECK capacity > 0 | TC-N18 | TC-06 |
+| CHECK facility_name in (...) | — | TC-07 |
+| CHECK quantity > 0 | TC-N19 | TC-08 |
+| CHECK purpose in (...) | TC-N20 | TC-11 |
+| CHECK booking_status in (...) | TC-N21 | TC-12 |
+| CHECK end_time > start_time | TC-N22 | TC-13 |
+| CHECK expected_participants > 0 | TC-N23 | TC-14 |
+| CHECK rejected → reason NOT NULL | TC-N24, N25 | TC-15 |
+| CHECK problem_type in (...) | TC-N26 | TC-16 |
+| CHECK status in (...) | TC-N27 | TC-17 |
+| CHECK completed → info NOT NULL | TC-N28 | TC-18 |
+| FK Space → BookingRequest | TC-N07 | TC-19 |
+| FK Users → BookingRequest (requester) | TC-N08 | TC-20 |
+| FK Space → MaintenanceRecord | TC-N11 | TC-21 |
+| FK Users → MaintenanceRecord (reporter) | TC-N12 | TC-22 |
+| FK Users → BookingRequest (approver) | — | TC-23 |
+| FK Users → BookingRequest (check-in) | — | TC-24 |
+| FK Users → BookingRequest (completion) | — | TC-25 |
+| FK Users → MaintenanceRecord (assigned) | — | TC-26 |
+| FK Space → SpaceFacility | TC-N09 | TC-09 |
+| FK Facility → SpaceFacility | TC-N10 | TC-10 |
+
+## Business Rules Enforced by the Database
+
+| BR | Description | Verification |
+|----|-------------|-------------|
+| BR-01 | User roles limited to predefined values | TC-N13, TC-01 |
+| BR-02 | Account statuses limited to predefined values | TC-N14, TC-02 |
+| BR-03 | Space types limited to predefined values | TC-N16, TC-04 |
+| BR-04 | Space statuses limited to predefined values | TC-N17, TC-05 |
+| BR-05 | Booking purposes limited to predefined values | TC-N20, TC-11 |
+| BR-06 | Booking statuses limited to predefined values | TC-N21, TC-12 |
+| BR-13 | Maintenance statuses limited to predefined values | TC-N27, TC-17 |
+| BR-19 | Rejected booking must store rejection reason | TC-N24, TC-N25, TC-15 |
+| BR-21 | M:N Space–Facility via junction table with quantity | TC-N09, TC-N10, TC-09, TC-10 |
+
+## Business Rules Not Enforced by the Database
+
+These BRs require **application-layer logic or triggers** that are not implemented in the current DDL:
+
+| BR | Description | Reason Not Enforceable |
+|----|-------------|----------------------|
+| BR-07 | Approval by facility staff or manager | FK only validates user existence, not role |
+| BR-08 | Pending → approved/rejected only | No status-transition trigger |
+| BR-09 | Allowed booking status transitions | No status-transition trigger |
+| BR-10 | No overlapping approved bookings | No overlap-detection trigger |
+| BR-11 | Unavailable spaces cannot be booked | No cross-table validation trigger |
+| BR-12 | Any role may book any space type | Permission logic, not DB-enforceable |
+| BR-14 | Prevent booking when space under maintenance | No synchronization trigger |
+| BR-15 | Check-in records actual start, staff, condition | Workflow logic, no trigger |
+| BR-16 | Check-out records actual end, condition, notes | Workflow logic, no trigger |
+| BR-17 | No-show from approved | Requires scheduled job |
+| BR-18 | Historical records retained indefinitely | Requires retention policy |
+| BR-20 | Facility manager manages space catalog | Authorization logic |
 
 ## Model Usage
-**Big Pickle (from the default provider):** Used as the primary model.
 
-## Tested Constraints
-
-| Constraint                                                 | Test evidence |
-| ---------------------------------------------------------- | -------- |
-| User roles are limited to predefined values                | TC-01 |
-| User account statuses are limited to predefined values     | TC-02 |
-| User email uniqueness                                      | TC-03 |
-| Space types are limited to predefined values               | TC-04 |
-| Space statuses are limited to predefined values            | TC-05 |
-| Space capacity must be positive                            | TC-06 |
-| Facility names are limited to predefined values            | TC-07 |
-| SpaceFacility quantity must be positive                    | TC-08 |
-| SpaceFacility foreign key to Space                         | TC-09 |
-| SpaceFacility foreign key to Facility                      | TC-10 |
-| Booking purpose values                                     | TC-11 |
-| Booking status values                                      | TC-12 |
-| Requested end time must be after requested start time      | TC-13 |
-| Expected participants must be positive                     | TC-14 |
-| Rejected booking requires rejection reason                 | TC-15 |
-| Maintenance problem types are limited to predefined values | TC-16 |
-| Maintenance statuses are limited to predefined values      | TC-17 |
-| Completed maintenance requires completion information      | TC-18 |
-| BookingRequest foreign key to Space                        | TC-19 |
-| BookingRequest foreign key to requester User               | TC-20 |
-| MaintenanceRecord foreign key to Space                     | TC-21 |
-| MaintenanceRecord foreign key to reporter User             | TC-22 |
-
----
-
-## Constraints Not Tested
-
-These constraints cannot be tested because they are **not implemented in the database**.
-
-| Constraint                                                                 | Reason                                                 |
-| -------------------------------------------------------------------------- | ------------------------------------------------------ |
-| A space under maintenance, temporarily closed, or retired cannot be booked | No database trigger/procedure fully enforces this rule |
-| Active maintenance forces `Space.current_status = under_maintenance`       | No synchronization trigger exists                      |
-| No overlapping approved bookings                                           | No overlap-detection trigger exists                    |
-| Expected participants must not exceed space capacity                       | Cross-table validation not implemented                 |
-| Approval must be performed by facility staff or facility manager           | FK only validates existence, not user role             |
-| Only facility staff can check in                                           | FK only validates existence, not user role             |
-| Only facility staff can complete bookings                                  | FK only validates existence, not user role             |
-| Booking automatically becomes `no_show`                                    | Requires scheduled job/application logic               |
-| Historical records must be maintained indefinitely                         | Requires deletion policy/audit mechanism               |
-
----
-
-## Tested BRs
-
-| BR    | Description                                           | Status   |
-| ----- | ----------------------------------------------------- | -------- |
-| BR-01 | User roles are limited to predefined values           | TC-01 |
-| BR-02 | Account statuses are limited to predefined values     | TC-02 |
-| BR-03 | Space types are limited to predefined values          | TC-04 |
-| BR-04 | Space statuses are limited to predefined values       | TC-05 |
-| BR-05 | Booking purposes are limited to predefined values     | TC-11 |
-| BR-06 | Booking statuses are limited to predefined values     | TC-12 |
-| BR-13 | Maintenance statuses are limited to predefined values | TC-17 |
-| BR-20 | Rejected booking must store rejection reason          | TC-15 |
-| BR-22 | Space-Facility M:N relationship                       | TC-09, TC-10, valid SpaceFacility inserts |
-
----
-
-## BRs Not Tested
-
-These BRs cannot be tested because they are **not enforced by the database implementation**.
-
-| BR    | Description                                                           | Reason                                     |
-| ----- | --------------------------------------------------------------------- | ------------------------------------------ |
-| BR-07 | Approval by facility staff or facility manager                        | Role validation not implemented            |
-| BR-08 | Pending booking can only become approved or rejected                  | Workflow validation not implemented        |
-| BR-09 | Allowed booking status transitions                                    | Status transition trigger not implemented  |
-| BR-10 | No overlapping approved bookings                                      | Overlap trigger not implemented            |
-| BR-11 | Unavailable spaces cannot be booked                                   | Booking prevention trigger not implemented |
-| BR-12 | Any user role may book any space type                                 | Permission logic, not database-enforced    |
-| BR-14 | Prevent bookings when space is under maintenance                      | Maintenance trigger not implemented        |
-| BR-15 | Maintenance record may optionally link to a booking                   | Schema support not implemented             |
-| BR-16 | Check-in records actual start time, staff identity, initial condition | Workflow logic not implemented             |
-| BR-17 | Check-out records actual end time, final condition, usage notes       | Workflow logic not implemented             |
-| BR-18 | Booking automatically becomes `no_show`                               | Requires scheduled job                     |
-| BR-19 | Historical records retained indefinitely                              | Retention policy not implemented           |
-| BR-21 | Facility manager manages space catalog                                | Authorization logic not implemented        |
+**Big Pickle (from the default provider):** Primary model for all three files.
