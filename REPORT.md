@@ -154,3 +154,99 @@ Rewrite instruction for step 01 and use Big Pickle to regenerate the output for 
 ## Model Usage
 **Big Pickle (from the default provider):** Used as the primary model.
 
+---
+
+# Student Work Report
+
+**Name:** Trần Trung Hậu
+**Student ID:** 24125055
+**Task:** Step 6 - Sample Data Preparation
+
+## Tasks
+Generate sample data for exceptional cases testing
+
+## Model Usage
+**Big Pickle (from the default provider):** Used as the primary model.
+
+## Tested Constraints
+
+| Constraint                                                 | Test evidence |
+| ---------------------------------------------------------- | -------- |
+| User roles are limited to predefined values                | TC-01 |
+| User account statuses are limited to predefined values     | TC-02 |
+| User email uniqueness                                      | TC-03 |
+| Space types are limited to predefined values               | TC-04 |
+| Space statuses are limited to predefined values            | TC-05 |
+| Space capacity must be positive                            | TC-06 |
+| Facility names are limited to predefined values            | TC-07 |
+| SpaceFacility quantity must be positive                    | TC-08 |
+| SpaceFacility foreign key to Space                         | TC-09 |
+| SpaceFacility foreign key to Facility                      | TC-10 |
+| Booking purpose values                                     | TC-11 |
+| Booking status values                                      | TC-12 |
+| Requested end time must be after requested start time      | TC-13 |
+| Expected participants must be positive                     | TC-14 |
+| Rejected booking requires rejection reason                 | TC-15 |
+| Maintenance problem types are limited to predefined values | TC-16 |
+| Maintenance statuses are limited to predefined values      | TC-17 |
+| Completed maintenance requires completion information      | TC-18 |
+| BookingRequest foreign key to Space                        | TC-19 |
+| BookingRequest foreign key to requester User               | TC-20 |
+| MaintenanceRecord foreign key to Space                     | TC-21 |
+| MaintenanceRecord foreign key to reporter User             | TC-22 |
+
+---
+
+## Constraints Not Tested
+
+These constraints cannot be tested because they are **not implemented in the database**.
+
+| Constraint                                                                 | Reason                                                 |
+| -------------------------------------------------------------------------- | ------------------------------------------------------ |
+| A space under maintenance, temporarily closed, or retired cannot be booked | No database trigger/procedure fully enforces this rule |
+| Active maintenance forces `Space.current_status = under_maintenance`       | No synchronization trigger exists                      |
+| No overlapping approved bookings                                           | No overlap-detection trigger exists                    |
+| Expected participants must not exceed space capacity                       | Cross-table validation not implemented                 |
+| Approval must be performed by facility staff or facility manager           | FK only validates existence, not user role             |
+| Only facility staff can check in                                           | FK only validates existence, not user role             |
+| Only facility staff can complete bookings                                  | FK only validates existence, not user role             |
+| Booking automatically becomes `no_show`                                    | Requires scheduled job/application logic               |
+| Historical records must be maintained indefinitely                         | Requires deletion policy/audit mechanism               |
+
+---
+
+## Tested BRs
+
+| BR    | Description                                           | Status   |
+| ----- | ----------------------------------------------------- | -------- |
+| BR-01 | User roles are limited to predefined values           | TC-01 |
+| BR-02 | Account statuses are limited to predefined values     | TC-02 |
+| BR-03 | Space types are limited to predefined values          | TC-04 |
+| BR-04 | Space statuses are limited to predefined values       | TC-05 |
+| BR-05 | Booking purposes are limited to predefined values     | TC-11 |
+| BR-06 | Booking statuses are limited to predefined values     | TC-12 |
+| BR-13 | Maintenance statuses are limited to predefined values | TC-17 |
+| BR-20 | Rejected booking must store rejection reason          | TC-15 |
+| BR-22 | Space-Facility M:N relationship                       | TC-09, TC-10, valid SpaceFacility inserts |
+
+---
+
+## BRs Not Tested
+
+These BRs cannot be tested because they are **not enforced by the database implementation**.
+
+| BR    | Description                                                           | Reason                                     |
+| ----- | --------------------------------------------------------------------- | ------------------------------------------ |
+| BR-07 | Approval by facility staff or facility manager                        | Role validation not implemented            |
+| BR-08 | Pending booking can only become approved or rejected                  | Workflow validation not implemented        |
+| BR-09 | Allowed booking status transitions                                    | Status transition trigger not implemented  |
+| BR-10 | No overlapping approved bookings                                      | Overlap trigger not implemented            |
+| BR-11 | Unavailable spaces cannot be booked                                   | Booking prevention trigger not implemented |
+| BR-12 | Any user role may book any space type                                 | Permission logic, not database-enforced    |
+| BR-14 | Prevent bookings when space is under maintenance                      | Maintenance trigger not implemented        |
+| BR-15 | Maintenance record may optionally link to a booking                   | Schema support not implemented             |
+| BR-16 | Check-in records actual start time, staff identity, initial condition | Workflow logic not implemented             |
+| BR-17 | Check-out records actual end time, final condition, usage notes       | Workflow logic not implemented             |
+| BR-18 | Booking automatically becomes `no_show`                               | Requires scheduled job                     |
+| BR-19 | Historical records retained indefinitely                              | Retention policy not implemented           |
+| BR-21 | Facility manager manages space catalog                                | Authorization logic not implemented        |
