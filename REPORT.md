@@ -154,3 +154,17 @@ Rewrite instruction for step 01 and use Big Pickle to regenerate the output for 
 ## Model Usage
 **Big Pickle (from the default provider):** Used as the primary model.
 
+---
+
+# Student Work Report
+
+**Name:** Nguyễn Minh Tâm
+**Student ID:** 24125042
+**Task:** Remove reserved word
+
+## Tasks have been done
+1. Remove reserved words when naming entity and table name
+2. Add some additional guideline and notes for some instruction files
+3. Rename the output files' names in AGENT.md
+4. Regenerate output with the updated guidelines
+5. 
