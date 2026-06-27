@@ -26,7 +26,7 @@ Do not jump directly to DDL. The documents from the prior steps should be follow
 ## Required Outputs
 
 - `outputs/01-business-req-analysis-G02.md`
-- `outputs/02-erd-design-erd-G02.md`
+- `outputs/02-erd-design-G02.md`
 - `outputs/03-logical-design-G02.md`
 - `outputs/04-design-validation-G02.md`
 - `outputs/05-db-definition-G02.sql`
