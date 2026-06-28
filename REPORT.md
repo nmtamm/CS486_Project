@@ -184,91 +184,127 @@ Step 6 produces **3 separate SQL files** built from the DDL in Step 5:
 
 ## Normal Test Cases
 
-These SELECT queries verify that the database **accepts** valid data. Categories:
+These SELECT-based test cases verify that the database contains valid data and satisfies all implemented constraints.
 
-| Category | Description |
-|----------|-------------|
-| Record counts | Verify each table has the expected number of rows |
-| FK integrity (no orphans) | Check that all foreign key values reference existing parent records |
-| CHECK constraint acceptance | Verify valid enum values, positive numbers, and data ranges are accepted |
-| UNIQUE constraint | Verify unique columns (e.g., email) have no duplicates |
-| Business logic | Verify status coverage, time ordering, and lifecycle completeness |
+### Categories
+
+| Category                    | Description                                                    |
+| --------------------------- | -------------------------------------------------------------- |
+| Record counts               | Verify expected number of rows for each table                  |
+| Primary key uniqueness      | Verify no duplicate primary key values exist                   |
+| Unique constraints          | Verify unique attributes and candidate keys remain unique      |
+| Foreign key integrity       | Verify no orphaned references exist                            |
+| Check constraint validation | Verify all stored values satisfy implemented CHECK constraints |
+| Not-null validation         | Verify required attributes contain values                      |
+| Status coverage             | Verify all expected statuses are represented                   |
+| Business scenarios          | Verify realistic operational scenarios exist in the dataset    |
+
+### Normal Test Coverage
+
+| Coverage Area          | Test Cases      |
+| ---------------------- | --------------- |
+| Record counts          | TC-N01 – TC-N08 |
+| Primary key uniqueness | TC-N09 – TC-N16 |
+| Unique constraints     | TC-N17 – TC-N22 |
+| Foreign key integrity  | TC-N23 – TC-N33 |
+| CHECK constraints      | TC-N34 – TC-N47 |
+| NOT NULL constraints   | TC-N48 – TC-N52 |
+| Status coverage        | TC-N53 – TC-N56 |
+| Business scenarios     | TC-N57 – TC-N60 |
+
 
 ## Exceptional Test Cases
 
-These INSERT statements verify the database **rejects** invalid data. Categories:
+These INSERT statements intentionally violate database constraints.
 
-| Constraint Type | Description |
-|----------------|-------------|
-| CHECK — invalid enum values | Out-of-range roles, statuses, types, and purpose values |
-| CHECK — numeric/business rules | Zero/negative capacity, quantity, participants; backward time ranges |
-| CHECK — conditional logic | Rejected booking without rejection reason; completed maintenance without completion info |
-| UNIQUE — duplicate email | Attempted insert with an existing email address |
-| FOREIGN KEY — non-existent reference | Reference to non-existent primary keys across all FK relationships |
+Every exceptional test case is expected to fail.
+
+### Categories
+
+| Constraint Type     | Description                                     |
+| ------------------- | ----------------------------------------------- |
+| Primary Key         | Duplicate primary key values                    |
+| Unique Constraint   | Duplicate unique values                         |
+| Foreign Key         | References to non-existent parent records       |
+| CHECK Constraint    | Invalid enum values and invalid business values |
+| NOT NULL Constraint | Missing mandatory attributes                    |
+
+### Exceptional Test Coverage
+
+| Coverage Area                | Test Cases    |
+| ---------------------------- | ------------- |
+| Primary Key violations       | TC-01 – TC-07 |
+| Unique constraint violations | TC-08 – TC-13 |
+| Foreign key violations       | TC-14 – TC-24 |
+| CHECK constraint violations  | TC-25 – TC-38 |
+| NOT NULL violations          | TC-39 – TC-45 |
+
 
 ## Constraint Coverage Summary
 
-| Implemented Constraint | Normal Test | Exception Test |
-|------------------------|-------------|----------------|
-| CHECK role in (...) | TC-N13 | TC-01 |
-| CHECK account_status in (...) | TC-N14 | TC-02 |
-| UNIQUE email | TC-N15 | TC-03 |
-| CHECK space_type in (...) | TC-N16 | TC-04 |
-| CHECK current_status in (...) | TC-N17 | TC-05 |
-| CHECK capacity > 0 | TC-N18 | TC-06 |
-| CHECK facility_name in (...) | — | TC-07 |
-| CHECK quantity > 0 | TC-N19 | TC-08 |
-| CHECK purpose in (...) | TC-N20 | TC-11 |
-| CHECK booking_status in (...) | TC-N21 | TC-12 |
-| CHECK end_time > start_time | TC-N22 | TC-13 |
-| CHECK expected_participants > 0 | TC-N23 | TC-14 |
-| CHECK rejected → reason NOT NULL | TC-N24, N25 | TC-15 |
-| CHECK problem_type in (...) | TC-N26 | TC-16 |
-| CHECK status in (...) | TC-N27 | TC-17 |
-| CHECK completed → info NOT NULL | TC-N28 | TC-18 |
-| FK Space → BookingRequest | TC-N07 | TC-19 |
-| FK Users → BookingRequest (requester) | TC-N08 | TC-20 |
-| FK Space → MaintenanceRecord | TC-N11 | TC-21 |
-| FK Users → MaintenanceRecord (reporter) | TC-N12 | TC-22 |
-| FK Users → BookingRequest (approver) | — | TC-23 |
-| FK Users → BookingRequest (check-in) | — | TC-24 |
-| FK Users → BookingRequest (completion) | — | TC-25 |
-| FK Users → MaintenanceRecord (assigned) | — | TC-26 |
-| FK Space → SpaceFacility | TC-N09 | TC-09 |
-| FK Facility → SpaceFacility | TC-N10 | TC-10 |
+| Implemented Constraint                            | Normal Test   | Exception Test |
+| ------------------------------------------------- | ------------- | -------------- |
+| PRIMARY KEY constraints                           | TC-N09–TC-N16 | TC-01–TC-07    |
+| UNIQUE email                                      | TC-N17        | TC-08          |
+| UNIQUE facility_name                              | TC-N19        | TC-09          |
+| UNIQUE (building, floor, room_number)             | TC-N18        | TC-10          |
+| UNIQUE (campus_space_code, campus_facility_id)    | TC-N20        | TC-11          |
+| UNIQUE BookingApproval.space_booking_id           | TC-N21        | TC-12          |
+| UNIQUE SpaceUsageSession.space_booking_id         | TC-N22        | TC-13          |
+| FK SpaceBooking → CampusUser                      | TC-N23        | TC-14          |
+| FK SpaceBooking → CampusSpace                     | TC-N24        | TC-15          |
+| FK CampusSpaceFacility → CampusSpace              | TC-N25        | TC-16          |
+| FK CampusSpaceFacility → CampusFacility           | TC-N26        | TC-17          |
+| FK BookingApproval → SpaceBooking                 | TC-N27        | TC-18          |
+| FK BookingApproval → CampusUser                   | TC-N28        | TC-19          |
+| FK SpaceUsageSession → SpaceBooking               | TC-N29        | TC-20          |
+| FK SpaceUsageSession → CampusUser                 | TC-N30        | TC-21          |
+| FK SpaceMaintenance → CampusSpace                 | TC-N31        | TC-22          |
+| FK SpaceMaintenance → CampusUser (reporter)       | TC-N32        | TC-23          |
+| FK SpaceMaintenance → CampusUser (assigned staff) | TC-N33        | TC-24          |
+| CHECK role values                                 | TC-N34        | TC-25          |
+| CHECK account_status values                       | TC-N35        | TC-26          |
+| CHECK space_type values                           | TC-N36        | TC-27          |
+| CHECK current_status values                       | TC-N37        | TC-28          |
+| CHECK capacity > 0                                | TC-N38        | TC-29          |
+| CHECK purpose_type values                         | TC-N39        | TC-30          |
+| CHECK booking status values                       | TC-N40        | TC-31          |
+| CHECK expected_participants > 0                   | TC-N41        | TC-32          |
+| CHECK requested_end_time > requested_start_time   | TC-N42        | TC-33          |
+| CHECK approval decision values                    | TC-N43        | TC-34          |
+| CHECK rejected booking requires rejection reason  | TC-N44        | TC-35          |
+| CHECK quantity > 0                                | TC-N45        | TC-36          |
+| CHECK maintenance problem_type values             | TC-N46        | TC-37          |
+| CHECK maintenance status values                   | TC-N47        | TC-38          |
+| NOT NULL constraints                              | TC-N48–TC-N52 | TC-39–TC-45    |
 
-## Business Rules Enforced by the Database
 
-| BR | Description | Verification |
-|----|-------------|-------------|
-| BR-01 | User roles limited to predefined values | TC-N13, TC-01 |
-| BR-02 | Account statuses limited to predefined values | TC-N14, TC-02 |
-| BR-03 | Space types limited to predefined values | TC-N16, TC-04 |
-| BR-04 | Space statuses limited to predefined values | TC-N17, TC-05 |
-| BR-05 | Booking purposes limited to predefined values | TC-N20, TC-11 |
-| BR-06 | Booking statuses limited to predefined values | TC-N21, TC-12 |
-| BR-13 | Maintenance statuses limited to predefined values | TC-N27, TC-17 |
-| BR-19 | Rejected booking must store rejection reason | TC-N24, TC-N25, TC-15 |
-| BR-21 | M:N Space–Facility via junction table with quantity | TC-N09, TC-N10, TC-09, TC-10 |
+# Business Rules Enforced by the Database
 
-## Business Rules Not Enforced by the Database
+The following business rules are directly enforced by the database implementation through PRIMARY KEY, FOREIGN KEY, UNIQUE, CHECK, and NOT NULL constraints.
 
-These BRs require **application-layer logic or triggers** that are not implemented in the current DDL:
+| BR  | Description                                             | Enforcement Mechanism                 | Verification  |
+| --- | ------------------------------------------------------- | ------------------------------------- | ------------- |
+| BR4 | Rejection reason is required when a booking is rejected | CHECK Constraint on `BookingApproval` | TC-N44, TC-35 |
+| BR8 | A booking's start time must be before its end time      | CHECK Constraint on `SpaceBooking`    | TC-N42, TC-33 |
 
-| BR | Description | Reason Not Enforceable |
-|----|-------------|----------------------|
-| BR-07 | Approval by facility staff or manager | FK only validates user existence, not role |
-| BR-08 | Pending → approved/rejected only | No status-transition trigger |
-| BR-09 | Allowed booking status transitions | No status-transition trigger |
-| BR-10 | No overlapping approved bookings | No overlap-detection trigger |
-| BR-11 | Unavailable spaces cannot be booked | No cross-table validation trigger |
-| BR-12 | Any role may book any space type | Permission logic, not DB-enforceable |
-| BR-14 | Prevent booking when space under maintenance | No synchronization trigger |
-| BR-15 | Check-in records actual start, staff, condition | Workflow logic, no trigger |
-| BR-16 | Check-out records actual end, condition, notes | Workflow logic, no trigger |
-| BR-17 | No-show from approved | Requires scheduled job |
-| BR-18 | Historical records retained indefinitely | Requires retention policy |
-| BR-20 | Facility manager manages space catalog | Authorization logic |
+
+
+# Business Rules Not Enforced by the Database
+
+The following business rules are defined in the business requirements but are not fully enforced by the current database implementation. They would require additional triggers, stored procedures, scheduled jobs, or application-layer logic.
+
+| BR   | Description                                                                                                     | Reason Not Enforced                                                                        |
+| ---- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| BR1  | A space cannot have two approved bookings with overlapping time periods                                         | Requires overlap-detection trigger or stored procedure                                     |
+| BR2  | A space under maintenance, temporarily closed, or retired cannot be booked                                      | Requires cross-table validation against `CampusSpace.current_status`                       |
+| BR3  | Booking status must follow the workflow: pending → approved/rejected/cancelled → checked_in → completed/no-show | Requires status transition trigger or workflow logic                                       |
+| BR5  | Approval decisions must be made by facility staff or facility manager                                           | Database validates user existence only, not user role                                      |
+| BR6  | Check-in must be performed by facility staff                                                                    | Database validates user existence only, not user role                                      |
+| BR7  | Expected participants must not exceed space capacity                                                            | Requires cross-table validation between `SpaceBooking` and `CampusSpace`                   |
+| BR9  | Maintenance status `in_progress` should prevent new bookings for the space                                      | Requires trigger checking active maintenance records before booking creation               |
+| BR10 | Historical records must be preserved (no hard deletes of completed bookings or maintenance)                     | Requires delete restrictions, auditing policy, soft-delete mechanism, or application logic |
+
 
 ## Model Usage
 
