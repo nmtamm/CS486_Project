@@ -7,7 +7,7 @@ This step produces **3 separate output files**:
 | # | File | Content |
 |---|------|---------|
 | 1 | `outputs/06-sample-data-G02.sql` | INSERT statements for valid sample data |
-| 2 | `outputs/06-normal-testcases-G02.sql` | SELECT queries verifying valid data and constraints (expected: OK) |
+| 2 | `outputs/06-verify-data-G02.sql` | SELECT queries verifying valid data and constraints (expected: OK) |
 | 3 | `outputs/06-exceptional-testcases-G02.sql` | INSERT statements violating constraints (expected: FAIL) |
 
 All 3 files must be executable against the database created in Step 5. Execute in order: 1 → 2 → 3.
@@ -78,7 +78,7 @@ VALUES
 
 ---
 
-## File 2: 06-normal-testcases-G02.sql — Normal Test Cases
+## File 2: 06-verify-data-G02.sql — Normal Test Cases
 
 Verify that the inserted sample data is correct and all implemented constraints accept valid values.
 
