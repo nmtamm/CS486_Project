@@ -33,12 +33,8 @@ Save the final document to `outputs/01-business-req-analysis-G02.md`. It must co
 
 ### 4. Relationships & Cardinalities
 - Identify all business-level relationships between the entities listed in Section 3.
-- For each relationship, specify:
-  - **Left Entity / Right Entity:** The two entities involved.
-  - **Relationship:** A brief verb phrase describing the connection.
-  - **Cardinality:** The business cardinality (e.g., 1 → N, M → N, 1 → 0..1).
-  - **Business Meaning:** A sentence explaining the relationship in plain business language.
 - Present each relationship as a short, concise natural-language sentence.
+- For example, a customer can order as many cups of coffee as he/she wants
 
 ### 5. Business Rules
 - Extract all constraints, policies, logic rules, and workflow rules from the requirement and the clarifications.
@@ -53,6 +49,10 @@ Save the final document to `outputs/01-business-req-analysis-G02.md`. It must co
 - **CRITICAL FOR DB DESIGN:** To ensure readiness for database modeling, the rules MUST explicitly capture:
    - **State Transitions & Lifecycles:** For any object that changes status over time (e.g., orders, requests, accounts), explicitly define the allowed and forbidden movements between statuses.
    - **Data Validation & Constraints:** Define operational boundaries, business limits (e.g., maximum thresholds, quantities, allowed configurations), operational time windows, and auto-expiry behaviors.
+
+## Requirements
+1. Name for entities or attributes must be specifically related to the business requirement instead of using general descriptive words. For example, instead of User, use Library_User
+2. 
 
 ## Workflow Execution Order (Strict)
 

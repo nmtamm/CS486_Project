@@ -1,145 +1,141 @@
-# Database Design Validation — School Shared Space Booking System
+# Database Design Validation
 
-> Based on: [Conceptual Design / ERD](02-erd-design-G02.md), [Logical Design](03-logical-design-G02.md), and [Business Requirement Analysis](01-business-req-analysis-G02.md)
+**Group:** G02
 
----
-
-## 1. Schema vs. ERD Validation
-
-### 1.1 Entity-to-Table Mapping
-
-| ERD Entity | Schema Table | Status |
-| ---------- | ------------ | ------ |
-| User | User | ✅ Present as independent table |
-| Space | Space | ✅ Present as independent table |
-| Facility | Facility | ✅ Present as independent table |
-| SpaceFacility | SpaceFacility | ✅ Present as junction table |
-| BookingRequest | BookingRequest | ✅ Present as independent table |
-| MaintenanceRecord | MaintenanceRecord | ✅ Present as independent table |
-
-**Weak Entity Check:** No weak entities exist in the ERD. The only composite PK is in SpaceFacility (junction table), correctly referencing parent tables Space and Facility. ✅
-
-### 1.2 Attribute Translation
-
-| Entity | Attribute | ERD Type | Schema Type | Status |
-| ------ | --------- | -------- | ----------- | ------ |
-| User | user_id | varchar PK | varchar PK | ✅ |
-| User | full_name | nvarchar | nvarchar | ✅ |
-| User | email | varchar UK | varchar | ✅ |
-| User | phone_number | varchar | varchar | ✅ |
-| User | role | varchar | varchar | ✅ |
-| User | department | nvarchar | nvarchar | ✅ |
-| User | account_status | varchar | varchar | ✅ |
-| Space | space_code | varchar PK | varchar PK | ✅ |
-| Space | space_name | nvarchar | nvarchar | ✅ |
-| Space | space_type | varchar | varchar | ✅ |
-| Space | building | nvarchar | nvarchar | ✅ |
-| Space | floor | int | int | ✅ |
-| Space | room_number | varchar | varchar | ✅ |
-| Space | capacity | int | int | ✅ |
-| Space | current_status | varchar | varchar | ✅ |
-| Space | usage_policy | nvarchar | nvarchar | ✅ |
-| Facility | facility_id | varchar PK | varchar PK | ✅ |
-| Facility | facility_name | varchar | varchar | ✅ |
-| Facility | description | nvarchar | nvarchar | ✅ |
-| SpaceFacility | space_code | varchar PK,FK | varchar PK,FK | ✅ |
-| SpaceFacility | facility_id | varchar PK,FK | varchar PK,FK | ✅ |
-| SpaceFacility | quantity | int | int | ✅ |
-| BookingRequest | booking_id | varchar PK | varchar PK | ✅ |
-| BookingRequest | space_code | varchar FK | varchar FK | ✅ |
-| BookingRequest | requester_id | varchar FK | varchar FK | ✅ |
-| BookingRequest | requested_start_time | datetime | datetime | ✅ |
-| BookingRequest | requested_end_time | datetime | datetime | ✅ |
-| BookingRequest | purpose | varchar | varchar | ✅ |
-| BookingRequest | expected_participants | int | int | ✅ |
-| BookingRequest | booking_status | varchar | varchar | ✅ |
-| BookingRequest | approver_id | varchar FK | varchar FK | ✅ |
-| BookingRequest | decision_time | datetime | datetime | ✅ |
-| BookingRequest | decision_note | nvarchar | nvarchar | ✅ |
-| BookingRequest | rejection_reason | nvarchar | nvarchar | ✅ |
-| BookingRequest | actual_start_time | datetime | datetime | ✅ |
-| BookingRequest | checked_in_by | varchar FK | varchar FK | ✅ |
-| BookingRequest | initial_condition | nvarchar | nvarchar | ✅ |
-| BookingRequest | actual_end_time | datetime | datetime | ✅ |
-| BookingRequest | completed_by | varchar FK | varchar FK | ✅ |
-| BookingRequest | final_condition | nvarchar | nvarchar | ✅ |
-| BookingRequest | usage_notes | nvarchar | nvarchar | ✅ |
-| MaintenanceRecord | maintenance_id | varchar PK | varchar PK | ✅ |
-| MaintenanceRecord | space_code | varchar FK | varchar FK | ✅ |
-| MaintenanceRecord | reporter_id | varchar FK | varchar FK | ✅ |
-| MaintenanceRecord | assigned_staff_id | varchar FK | varchar FK | ✅ |
-| MaintenanceRecord | problem_description | nvarchar | nvarchar | ✅ |
-| MaintenanceRecord | problem_type | varchar | varchar | ✅ |
-| MaintenanceRecord | start_time | datetime | datetime | ✅ |
-| MaintenanceRecord | completion_time | datetime | datetime | ✅ |
-| MaintenanceRecord | status | varchar | varchar | ✅ |
-| MaintenanceRecord | result_note | nvarchar | nvarchar | ✅ |
-
-All attributes from the ERD are present in the logical schema with matching names and data types. ✅
-
-### 1.3 Relationship & Cardinality
-
-| Relationship (ERD) | Cardinality | Schema Implementation | Status |
-| ------------------ | ----------- | -------------------- | ------ |
-| User submits BookingRequest | 1 → N | `BookingRequest.requester_id` FK → `User.user_id` (FK on many side) | ✅ |
-| Space is booked in BookingRequest | 1 → N | `BookingRequest.space_code` FK → `Space.space_code` (FK on many side) | ✅ |
-| User (approver) approves BookingRequest | 0..1 → N | `BookingRequest.approver_id` FK → `User.user_id` (nullable, on many side) | ✅ |
-| User (check-in) checks in BookingRequest | 0..1 → N | `BookingRequest.checked_in_by` FK → `User.user_id` (nullable, on many side) | ✅ |
-| User (completes) completes BookingRequest | 0..1 → N | `BookingRequest.completed_by` FK → `User.user_id` (nullable, on many side) | ✅ |
-| Space equipped with SpaceFacility | 1 → N | `SpaceFacility.space_code` FK → `Space.space_code` (FK on many side) | ✅ |
-| Facility installed in SpaceFacility | 1 → N | `SpaceFacility.facility_id` FK → `Facility.facility_id` (FK on many side) | ✅ |
-| User reports MaintenanceRecord | 1 → N | `MaintenanceRecord.reporter_id` FK → `User.user_id` (FK on many side) | ✅ |
-| User assigned to MaintenanceRecord | 0..1 → N | `MaintenanceRecord.assigned_staff_id` FK → `User.user_id` (nullable, on many side) | ✅ |
-| Space undergoes MaintenanceRecord | 1 → N | `MaintenanceRecord.space_code` FK → `Space.space_code` (FK on many side) | ✅ |
-
-**Many-to-Many (Space ↔ Facility):** Resolved via `SpaceFacility` junction table with composite PK `(space_code, facility_id)`, each being FK to parent tables. ✅
-
-**One-to-One:** No explicit 1:1 relationships in the ERD. Check-in and check-out are handled as roles with nullable FKs in BookingRequest, correct for optional 0..1 participation. ✅
+**Date:** 2026-06-27
 
 ---
 
-## 2. Schema vs. Business Requirements
+## 1. ERD-to-Relational Mapping Completeness
 
-### 2.1 Uniqueness and Identity Rules
+| ERD Entity (Document 02 §2) | Relational Table (Document 03 §1) | Status |
+|---|---|---|
+| CampusUser | CampusUser | ✓ |
+| CampusSpace | CampusSpace | ✓ |
+| CampusFacility | CampusFacility | ✓ |
+| CampusSpaceFacility | CampusSpaceFacility | ✓ |
+| SpaceBooking | SpaceBooking | ✓ |
+| BookingApproval | BookingApproval | ✓ |
+| SpaceUsageSession | SpaceUsageSession | ✓ |
+| SpaceMaintenance | SpaceMaintenance | ✓ |
 
-| Rule Source | Requirement | Schema Enforcement | Status |
-| ----------- | ----------- | ----------------- | ------ |
-| Business Requirements §3 (User row) | User email must be globally unique | Logical schema diagram marks `email` with ⭐ (Unique Key) (03-logical-design-G02.md §1, User table); ERD also marks it as UK | ✅ Present as Unique Key |
-
-### 2.2 Domain and Business Logic Constraints
-
-| Business Rule | Requirement | Schema Enforcement | Status |
-| ------------- | ----------- | ----------------- | ------ |
-| BR-01 | Roles: student, lecturer, teaching_assistant, facility_staff, department_administrator, facility_manager | CHECK constraint on `role` (03-logical-design-G02.md §2) | ✅ |
-| BR-02 | Account statuses: active, inactive, suspended | CHECK constraint on `account_status` | ✅ |
-| BR-03 | Space types: auditorium, classroom, computer_laboratory, project_laboratory, meeting_room, student_workspace | CHECK constraint on `space_type` | ✅ |
-| BR-04 | Space statuses: available, in_use, under_maintenance, temporarily_closed, retired | CHECK constraint on `current_status` | ✅ |
-| BR-05 | Booking purposes: lecture, examination, seminar, workshop, meeting, student_activity, administrative_event | CHECK constraint on `purpose` | ✅ |
-| BR-06 | Booking statuses: pending, approved, rejected, cancelled, checked_in, completed, no_show | CHECK constraint on `booking_status` | ✅ |
-| BR-07 | All booking requests require approval by facility staff/manager | Application Logic (approver_id + role check) | ✅ |
-| BR-08 | Pending booking can be approved or rejected | Application Logic | ✅ |
-| BR-09 | Allowed booking status transitions | Trigger / Stored Procedure | ✅ |
-| BR-10 | No overlapping approved bookings for same space | Trigger / Stored Procedure | ✅ |
-| BR-11 | Space under maintenance/closed/retired cannot be booked | Application Logic | ✅ |
-| BR-12 | Any user role may book any space type | Application Logic | ✅ |
-| BR-13 | Maintenance statuses: reported, in_progress, completed, cancelled | CHECK constraint on `status` | ✅ |
-| BR-14 | Space set to under_maintenance prevents new bookings | Application Logic | ✅ |
-| BR-15 | Check-in records actual start time, staff ID, initial condition | Application Logic | ✅ |
-| BR-16 | Check-out records actual end time, final condition, usage notes | Application Logic | ✅ |
-| BR-17 | No-show transition from approved | Trigger / Stored Procedure | ✅ |
-| BR-18 | Full historical records maintained indefinitely | Application Logic | ✅ |
-| BR-19 | Rejected booking must store rejection reason | CHECK + Application Logic | ✅ |
-| BR-20 | Facility manager manages space catalog | Application Logic | ✅ |
-| BR-21 | M:N Space-Facility via SpaceFacility | Composite PK + FOREIGN KEY | ✅ |
+All 8 entities from the ERD are mapped to corresponding tables.
 
 ---
 
-## 3. Issues
+## 2. Attribute Coverage
 
-No issues identified.
+| Entity | Required Attributes | Present | Missing |
+|---|---|---|---|
+| CampusUser | campus_user_id, full_name, email, role, department, account_status | ✓ All | None |
+| CampusSpace | campus_space_code, space_name, space_type, building, floor, room_number, capacity, current_status, usage_policy | ✓ All | None |
+| CampusFacility | campus_facility_id, facility_name | ✓ All | None |
+| CampusSpaceFacility | campus_space_code, campus_facility_id | ✓ Both | None; added quantity for completeness |
+| SpaceBooking | space_booking_id, requester_id, campus_space_code, requested_start_time, requested_end_time, purpose_type, expected_participants, status | ✓ All | None; added submitted_at for audit |
+| BookingApproval | booking_approval_id, space_booking_id, staff_id, decision, decision_time, decision_note | ✓ All | None; added rejection_reason per BR4 |
+| SpaceUsageSession | space_usage_session_id, space_booking_id, checked_in_by, actual_start_time, initial_condition, actual_end_time, final_condition, usage_notes | ✓ All | None |
+| SpaceMaintenance | space_maintenance_id, campus_space_code, reporter_id, assigned_staff_id, problem_description, start_time, completion_time, status, result_note | ✓ All | None; added problem_type for categorization |
 
 ---
 
-## 4. Notes
+## 3. Key Validation
 
-Since these steps are unrelated to SQL yet, do not try to check for any requirements that are SQL-specific (such as using CHECK for predefined values). All CHECK-based domain constraints noted above are documented here for traceability but are noted as application-logic-level concerns where SQL CHECK is not yet implemented.
+### 3.1. Primary Keys
+
+| Table | PK | Justification |
+|---|---|---|
+| CampusUser | campus_user_id | Surrogate key; email is also a candidate key |
+| CampusSpace | campus_space_code | Natural key from business |
+| CampusFacility | campus_facility_id | Surrogate key |
+| CampusSpaceFacility | campus_space_facility_id | Surrogate; (campus_space_code, campus_facility_id) is alternate key |
+| SpaceBooking | space_booking_id | Surrogate key |
+| BookingApproval | booking_approval_id | Surrogate; space_booking_id is also unique (1:1) |
+| SpaceUsageSession | space_usage_session_id | Surrogate; space_booking_id is also unique (1:1) |
+| SpaceMaintenance | space_maintenance_id | Surrogate key |
+
+### 3.2. Foreign Keys
+
+| FK | Source → Target | Validates |
+|---|---|---|
+| SpaceBooking.requester_id → CampusUser.campus_user_id | Every booking has a requester | ✓ |
+| SpaceBooking.campus_space_code → CampusSpace.campus_space_code | Every booking references a valid space | ✓ |
+| CampusSpaceFacility.campus_space_code → CampusSpace.campus_space_code | Facility assignment to valid space | ✓ |
+| CampusSpaceFacility.campus_facility_id → CampusFacility.campus_facility_id | References valid facility | ✓ |
+| BookingApproval.space_booking_id → SpaceBooking.space_booking_id | UNIQUE ensures 1:1 | ✓ |
+| BookingApproval.staff_id → CampusUser.campus_user_id | Approver is a valid user | ✓ |
+| SpaceUsageSession.space_booking_id → SpaceBooking.space_booking_id | UNIQUE ensures 1:1 | ✓ |
+| SpaceUsageSession.checked_in_by → CampusUser.campus_user_id | Check-in staff is valid user | ✓ |
+| SpaceMaintenance.campus_space_code → CampusSpace.campus_space_code | Maintenance belongs to valid space | ✓ |
+| SpaceMaintenance.reporter_id → CampusUser.campus_user_id | Reporter is valid user | ✓ |
+| SpaceMaintenance.assigned_staff_id → CampusUser.campus_user_id | Assignee is valid user (nullable) | ✓ |
+
+### 3.3. Referential Integrity Actions
+
+All FKs use `ON DELETE NO ACTION` (default) to prevent accidental deletion of referenced data, preserving historical records per BR10.
+
+---
+
+## 4. Business Rule Verification
+
+| BR# | Rule | Satisfied? | Mechanism |
+|---|---|---|---|
+| BR1 | No overlapping approved bookings | ✓ | Trigger/application enforcement (see Document 03 §5 note) |
+| BR2 | Unavailable spaces cannot be booked | ✓ | CampusSpace.current_status check before approval |
+| BR3 | Status flow | ✓ | CHECK constraint on SpaceBooking.status |
+| BR4 | Rejection reason required | ✓ | CHECK constraint: rejection_reason IS NOT NULL when decision = 'rejected' |
+| BR5 | Approval by staff/manager | ✓ | Application logic (role check); DB stores staff_id |
+| BR6 | Check-in by staff | ✓ | Application logic (role check) |
+| BR7 | Capacity check | ✓ | CHECK (expected_participants > 0); app-level check against CampusSpace.capacity |
+| BR8 | Start before end | ✓ | CHECK (requested_end_time > requested_start_time) |
+| BR9 | Maintenance prevents booking | ✓ | Application checks CampusSpace.current_status and active maintenance records |
+| BR10 | Historical preservation | ✓ | No hard deletes; soft statuses retained; ON DELETE NO ACTION |
+
+---
+
+## 5. Normalization Check
+
+### 5.1. 1NF (First Normal Form)
+
+All tables have atomic columns and a primary key. ✓
+
+### 5.2. 2NF (Second Normal Form)
+
+All non-key attributes are fully functionally dependent on the entire primary key. The CampusSpaceFacility bridge table has a surrogate PK, and the only non-key attribute (quantity) depends on the full (campus_space_code, campus_facility_id) pair. ✓
+
+### 5.3. 3NF (Third Normal Form)
+
+No transitive dependencies exist. All non-key attributes depend only on the primary key. ✓
+
+### 5.4. BCNF (Boyce-Codd Normal Form)
+
+Every determinant is a candidate key. ✓
+
+**Conclusion:** The schema is in BCNF.
+
+---
+
+## 6. Completeness Against Business Requirements
+
+| Requirement (from Document 01) | Coverage |
+|---|---|
+| User information & roles (E1) | CampusUser table with role enum |
+| Space information & status (E2) | CampusSpace table with current_status |
+| Facility tracking (E3) | CampusFacility + CampusSpaceFacility tables |
+| Booking submission (E4) | SpaceBooking table |
+| Conflict prevention (BR1, BR2) | Enforcement via trigger/application |
+| Approval workflow (E5) | BookingApproval table |
+| Check-in/out sessions (E6) | SpaceUsageSession table |
+| Maintenance management (E7) | SpaceMaintenance table |
+| Historical records (BR10) | Soft retention strategy |
+| Reporting | Supported via querying all tables |
+
+---
+
+## 7. Issues and Recommendations
+
+| # | Issue | Recommendation |
+|---|---|---|
+| 1 | BR1 overlap prevention not fully expressible in DDL | Implement as a `BEFORE INSERT/UPDATE` trigger on SpaceBooking (see Document 05) |
+| 2 | No explicit role-permission table | Currently acceptable; roles are enum. If permissions grow, consider a separate permission model. |
+| 3 | CampusSpace.current_status and SpaceMaintenance.status could become inconsistent | Consider a trigger that auto-updates CampusSpace.current_status when an active maintenance record exists. |
+| 4 | No uniqueness constraint on (building, floor, room_number) in CampusSpace | Consider adding a UNIQUE constraint to prevent duplicate room entries. |

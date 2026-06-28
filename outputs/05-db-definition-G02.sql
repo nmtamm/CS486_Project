@@ -1,219 +1,191 @@
--- ============================================================
--- Step 5: Database Implementation
--- School Shared Space Booking System
+-- ============================================================================
+-- Database Definition for School of Computer Science Space Booking System
 -- Group: G02
--- DBMS: Microsoft SQL Server
--- Based on: 03-logical-design-G02.md, 04-design-validation-G02.md
--- ============================================================
+-- DBMS:  Microsoft SQL Server
+-- Date:  2026-06-27
+-- ============================================================================
 
--- ============================================================
--- 1. Create Database
--- ============================================================
 CREATE DATABASE SpaceBookingDB;
 GO
-
--- ============================================================
--- 2. Go to the Newly Created Database
--- ============================================================
 USE SpaceBookingDB;
 GO
 
--- ============================================================
--- 3. Create Primary Tables (no foreign keys)
--- ============================================================
+-- ----------------------------------------------------------------------------
+-- 1. CAMPUS USER
+-- ----------------------------------------------------------------------------
+CREATE TABLE CampusUser (
+    campus_user_id  INT             NOT NULL IDENTITY(1,1),
+    full_name       NVARCHAR(100)   NOT NULL,
+    email           NVARCHAR(255)   NOT NULL,
+    phone           NVARCHAR(20)    NULL,
+    role            NVARCHAR(30)    NOT NULL,
+    department      NVARCHAR(100)   NOT NULL,
+    account_status  NVARCHAR(20)    NOT NULL DEFAULT 'active',
 
--- 3.1. Users
-CREATE TABLE Users (
-    user_id            VARCHAR(20)     NOT NULL,
-    full_name          NVARCHAR(100)   NOT NULL,
-    email              VARCHAR(255)    NOT NULL,
-    phone_number       VARCHAR(20)     NOT NULL,
-    role               VARCHAR(30)     NOT NULL,
-    department         NVARCHAR(100)   NOT NULL,
-    account_status     VARCHAR(20)     NOT NULL,
-
-    PRIMARY KEY (user_id),
+    PRIMARY KEY (campus_user_id),
     UNIQUE (email),
     CHECK (role IN (
-        'student',
-        'lecturer',
-        'teaching_assistant',
-        'facility_staff',
-        'department_administrator',
-        'facility_manager'
+        'student', 'lecturer', 'teaching_assistant',
+        'facility_staff', 'department_admin', 'facility_manager'
     )),
-    CHECK (account_status IN (
-        'active',
-        'inactive',
-        'suspended'
-    ))
+    CHECK (account_status IN ('active', 'inactive', 'suspended'))
 );
 
--- 3.2. Space
-CREATE TABLE Space (
-    space_code         VARCHAR(20)     NOT NULL,
-    space_name         NVARCHAR(100)   NOT NULL,
-    space_type         VARCHAR(30)     NOT NULL,
-    building           NVARCHAR(100)   NOT NULL,
-    floor              INT             NOT NULL,
-    room_number        VARCHAR(20)     NOT NULL,
-    capacity           INT             NOT NULL,
-    current_status     VARCHAR(30)     NOT NULL,
-    usage_policy       NVARCHAR(500)   NULL,
 
-    PRIMARY KEY (space_code),
+-- ----------------------------------------------------------------------------
+-- 2. CAMPUS SPACE
+-- ----------------------------------------------------------------------------
+CREATE TABLE CampusSpace (
+    campus_space_code NVARCHAR(20)  NOT NULL,
+    space_name        NVARCHAR(100) NOT NULL,
+    space_type        NVARCHAR(30)  NOT NULL,
+    building          NVARCHAR(100) NOT NULL,
+    floor             INT           NOT NULL,
+    room_number       NVARCHAR(20)  NOT NULL,
+    capacity          INT           NOT NULL,
+    current_status    NVARCHAR(30)  NOT NULL DEFAULT 'available',
+    usage_policy      NVARCHAR(MAX) NULL,
+
+    PRIMARY KEY (campus_space_code),
+    UNIQUE (building, floor, room_number),
     CHECK (space_type IN (
-        'auditorium',
-        'classroom',
-        'computer_laboratory',
-        'project_laboratory',
-        'meeting_room',
-        'student_workspace'
+        'auditorium', 'classroom', 'computer_lab', 'meeting_room'
     )),
     CHECK (current_status IN (
-        'available',
-        'in_use',
-        'under_maintenance',
-        'temporarily_closed',
-        'retired'
+        'available', 'in_use', 'under_maintenance',
+        'temporarily_closed', 'retired'
     )),
     CHECK (capacity > 0)
 );
 
--- 3.3. Facility
-CREATE TABLE Facility (
-    facility_id        VARCHAR(20)     NOT NULL,
-    facility_name      VARCHAR(100)    NOT NULL,
-    description        NVARCHAR(500)   NULL,
 
-    PRIMARY KEY (facility_id),
-    CHECK (facility_name IN (
-        'projector',
-        'whiteboard',
-        'microphone',
-        'computer',
-        'livestreaming_equipment',
-        'air_conditioner'
-    ))
+-- ----------------------------------------------------------------------------
+-- 3. CAMPUS FACILITY
+-- ----------------------------------------------------------------------------
+CREATE TABLE CampusFacility (
+    campus_facility_id INT           NOT NULL IDENTITY(1,1),
+    facility_name      NVARCHAR(100) NOT NULL,
+    description        NVARCHAR(255) NULL,
+
+    PRIMARY KEY (campus_facility_id),
+    UNIQUE (facility_name)
 );
 
--- ============================================================
--- 4. Create Tables with Foreign Keys
--- ============================================================
 
--- 4.1. SpaceFacility (junction table for M:N Space-Facility)
-CREATE TABLE SpaceFacility (
-    space_code         VARCHAR(20)     NOT NULL,
-    facility_id        VARCHAR(20)     NOT NULL,
-    quantity           INT             NOT NULL,
+-- ----------------------------------------------------------------------------
+-- 4. CAMPUS SPACE FACILITY (Bridge Table)
+-- ----------------------------------------------------------------------------
+CREATE TABLE CampusSpaceFacility (
+    campus_space_facility_id INT          NOT NULL IDENTITY(1,1),
+    campus_space_code        NVARCHAR(20) NOT NULL,
+    campus_facility_id       INT          NOT NULL,
+    quantity                 INT          NOT NULL DEFAULT 1,
 
-    PRIMARY KEY (space_code, facility_id),
+    PRIMARY KEY (campus_space_facility_id),
+    UNIQUE (campus_space_code, campus_facility_id),
+    FOREIGN KEY (campus_space_code) REFERENCES CampusSpace (campus_space_code),
+    FOREIGN KEY (campus_facility_id) REFERENCES CampusFacility (campus_facility_id),
     CHECK (quantity > 0)
 );
 
--- 4.2. BookingRequest
-CREATE TABLE BookingRequest (
-    booking_id               VARCHAR(20)     NOT NULL,
-    space_code               VARCHAR(20)     NOT NULL,
-    requester_id             VARCHAR(20)     NOT NULL,
-    requested_start_time     DATETIME        NOT NULL,
-    requested_end_time       DATETIME        NOT NULL,
-    purpose                  VARCHAR(30)     NOT NULL,
-    expected_participants    INT             NOT NULL,
-    booking_status           VARCHAR(20)     NOT NULL,
-    approver_id              VARCHAR(20)     NULL,
-    decision_time            DATETIME        NULL,
-    decision_note            NVARCHAR(500)   NULL,
-    rejection_reason         NVARCHAR(500)   NULL,
-    actual_start_time        DATETIME        NULL,
-    checked_in_by            VARCHAR(20)     NULL,
-    initial_condition        NVARCHAR(500)   NULL,
-    actual_end_time          DATETIME        NULL,
-    completed_by             VARCHAR(20)     NULL,
-    final_condition          NVARCHAR(500)   NULL,
-    usage_notes              NVARCHAR(500)   NULL,
 
-    PRIMARY KEY (booking_id),
-    CHECK (purpose IN (
-        'lecture',
-        'examination',
-        'seminar',
-        'workshop',
-        'meeting',
-        'student_activity',
-        'administrative_event'
-    )),
-    CHECK (booking_status IN (
-        'pending',
-        'approved',
-        'rejected',
-        'cancelled',
-        'checked_in',
-        'completed',
-        'no_show'
-    )),
-    CHECK (requested_end_time > requested_start_time),
-    CHECK (expected_participants > 0),
-    CHECK (
-        (booking_status = 'rejected' AND rejection_reason IS NOT NULL)
-        OR
-        (booking_status <> 'rejected' AND rejection_reason IS NULL)
-    )
-);
+-- ----------------------------------------------------------------------------
+-- 5. SPACE BOOKING
+-- ----------------------------------------------------------------------------
+CREATE TABLE SpaceBooking (
+    space_booking_id        INT           NOT NULL IDENTITY(1,1),
+    requester_id            INT           NOT NULL,
+    campus_space_code       NVARCHAR(20)  NOT NULL,
+    requested_start_time    DATETIME2     NOT NULL,
+    requested_end_time      DATETIME2     NOT NULL,
+    purpose_type            NVARCHAR(30)  NOT NULL,
+    expected_participants   INT           NOT NULL,
+    status                  NVARCHAR(20)  NOT NULL DEFAULT 'pending',
+    submitted_at            DATETIME2     NOT NULL DEFAULT GETDATE(),
 
--- 4.3. MaintenanceRecord
-CREATE TABLE MaintenanceRecord (
-    maintenance_id       VARCHAR(20)     NOT NULL,
-    space_code           VARCHAR(20)     NOT NULL,
-    reporter_id          VARCHAR(20)     NOT NULL,
-    assigned_staff_id    VARCHAR(20)     NULL,
-    problem_description  NVARCHAR(1000)  NOT NULL,
-    problem_type         VARCHAR(30)     NOT NULL,
-    start_time           DATETIME        NOT NULL,
-    completion_time      DATETIME        NULL,
-    status               VARCHAR(20)     NOT NULL,
-    result_note          NVARCHAR(500)   NULL,
-
-    PRIMARY KEY (maintenance_id),
-    CHECK (problem_type IN (
-        'broken_projector',
-        'air_conditioning_failure',
-        'damaged_furniture',
-        'cleaning_issue',
-        'network_problem'
+    PRIMARY KEY (space_booking_id),
+    FOREIGN KEY (requester_id) REFERENCES CampusUser (campus_user_id),
+    FOREIGN KEY (campus_space_code) REFERENCES CampusSpace (campus_space_code),
+    CHECK (purpose_type IN (
+        'lecture', 'examination', 'seminar', 'workshop',
+        'meeting', 'student_activity', 'administrative_event'
     )),
     CHECK (status IN (
-        'reported',
-        'in_progress',
-        'completed',
-        'cancelled'
+        'pending', 'approved', 'rejected', 'cancelled',
+        'checked_in', 'completed', 'no-show'
     )),
+    CHECK (expected_participants > 0),
+    CHECK (requested_end_time > requested_start_time)
+);
+
+
+-- ----------------------------------------------------------------------------
+-- 6. BOOKING APPROVAL
+-- ----------------------------------------------------------------------------
+CREATE TABLE BookingApproval (
+    booking_approval_id INT           NOT NULL IDENTITY(1,1),
+    space_booking_id    INT           NOT NULL,
+    staff_id            INT           NOT NULL,
+    decision            NVARCHAR(10)  NOT NULL,
+    decision_time       DATETIME2     NOT NULL DEFAULT GETDATE(),
+    decision_note       NVARCHAR(MAX) NULL,
+    rejection_reason    NVARCHAR(MAX) NULL,
+
+    PRIMARY KEY (booking_approval_id),
+    UNIQUE (space_booking_id),
+    FOREIGN KEY (space_booking_id) REFERENCES SpaceBooking (space_booking_id),
+    FOREIGN KEY (staff_id) REFERENCES CampusUser (campus_user_id),
+    CHECK (decision IN ('approved', 'rejected')),
     CHECK (
-        (status = 'completed' AND completion_time IS NOT NULL AND result_note IS NOT NULL)
+        (decision = 'rejected' AND rejection_reason IS NOT NULL)
         OR
-        (status <> 'completed')
+        (decision = 'approved')
     )
 );
 
--- ============================================================
--- 5. Add Foreign Key Constraints
--- ============================================================
 
--- 5.1. SpaceFacility foreign keys
-ALTER TABLE SpaceFacility ADD FOREIGN KEY (space_code) REFERENCES Space(space_code);
-ALTER TABLE SpaceFacility ADD FOREIGN KEY (facility_id) REFERENCES Facility(facility_id);
+-- ----------------------------------------------------------------------------
+-- 7. SPACE USAGE SESSION
+-- ----------------------------------------------------------------------------
+CREATE TABLE SpaceUsageSession (
+    space_usage_session_id INT           NOT NULL IDENTITY(1,1),
+    space_booking_id       INT           NOT NULL,
+    checked_in_by          INT           NOT NULL,
+    actual_start_time      DATETIME2     NOT NULL,
+    initial_condition      NVARCHAR(MAX) NULL,
+    actual_end_time        DATETIME2     NULL,
+    final_condition        NVARCHAR(MAX) NULL,
+    usage_notes            NVARCHAR(MAX) NULL,
 
--- 5.2. BookingRequest foreign keys
-ALTER TABLE BookingRequest ADD FOREIGN KEY (space_code) REFERENCES Space(space_code);
-ALTER TABLE BookingRequest ADD FOREIGN KEY (requester_id) REFERENCES Users(user_id);
-ALTER TABLE BookingRequest ADD FOREIGN KEY (approver_id) REFERENCES Users(user_id);
-ALTER TABLE BookingRequest ADD FOREIGN KEY (checked_in_by) REFERENCES Users(user_id);
-ALTER TABLE BookingRequest ADD FOREIGN KEY (completed_by) REFERENCES Users(user_id);
+    PRIMARY KEY (space_usage_session_id),
+    UNIQUE (space_booking_id),
+    FOREIGN KEY (space_booking_id) REFERENCES SpaceBooking (space_booking_id),
+    FOREIGN KEY (checked_in_by) REFERENCES CampusUser (campus_user_id)
+);
 
--- 5.3. MaintenanceRecord foreign keys
-ALTER TABLE MaintenanceRecord ADD FOREIGN KEY (space_code) REFERENCES Space(space_code);
-ALTER TABLE MaintenanceRecord ADD FOREIGN KEY (reporter_id) REFERENCES Users(user_id);
-ALTER TABLE MaintenanceRecord ADD FOREIGN KEY (assigned_staff_id) REFERENCES Users(user_id);
 
-GO
+-- ----------------------------------------------------------------------------
+-- 8. SPACE MAINTENANCE
+-- ----------------------------------------------------------------------------
+CREATE TABLE SpaceMaintenance (
+    space_maintenance_id INT           NOT NULL IDENTITY(1,1),
+    campus_space_code    NVARCHAR(20)  NOT NULL,
+    reporter_id          INT           NOT NULL,
+    assigned_staff_id    INT           NULL,
+    problem_description  NVARCHAR(MAX) NOT NULL,
+    problem_type         NVARCHAR(30)  NOT NULL,
+    start_time           DATETIME2     NOT NULL DEFAULT GETDATE(),
+    completion_time      DATETIME2     NULL,
+    status               NVARCHAR(20)  NOT NULL DEFAULT 'reported',
+    result_note          NVARCHAR(MAX) NULL,
 
+    PRIMARY KEY (space_maintenance_id),
+    FOREIGN KEY (campus_space_code) REFERENCES CampusSpace (campus_space_code),
+    FOREIGN KEY (reporter_id) REFERENCES CampusUser (campus_user_id),
+    FOREIGN KEY (assigned_staff_id) REFERENCES CampusUser (campus_user_id),
+    CHECK (problem_type IN (
+        'broken_projector', 'ac_failure', 'damaged_furniture',
+        'cleaning', 'network', 'other'
+    )),
+    CHECK (status IN ('reported', 'in_progress', 'completed', 'cancelled'))
+);
