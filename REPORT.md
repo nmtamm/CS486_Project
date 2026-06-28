@@ -12,12 +12,12 @@
 
 The [output document](outputs/01-business-req-analysis-G02.md) consists of 4 sections:
 
-| Section                                    | Description                                                                                               |
-| ------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
-| **1. Business Purpose**                    | Identifies the core problem, main objectives, and scope of the system.                                    |
-| **2. Actors**                              | Lists user roles, responsibilities, and interactions with the system.                                     |
-| **3. Business Data Entities & Attributes** | Identifies main entities, identifiers, required/optional attributes, and predefined values (enum).        |
-| **4. Business Rules**                      | Extracts constraints, policies, business rules, lifecycle, and state transitions.                         |
+| Section                                    | Description                                                                                        |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| **1. Business Purpose**                    | Identifies the core problem, main objectives, and scope of the system.                             |
+| **2. Actors**                              | Lists user roles, responsibilities, and interactions with the system.                              |
+| **3. Business Data Entities & Attributes** | Identifies main entities, identifiers, required/optional attributes, and predefined values (enum). |
+| **4. Business Rules**                      | Extracts constraints, policies, business rules, lifecycle, and state transitions.                  |
 
 ## 2. Iterative clarification loop
 Ambiguous points were resolved via the `question` tool before finalizing business rules.
@@ -176,11 +176,11 @@ Rewrite instruction for step 01 and use Big Pickle to regenerate the output for 
 
 Step 6 produces **3 separate SQL files** built from the DDL in Step 5:
 
-| File | Purpose |
-|------|---------|
-| `06-sample-data-G02.sql` | Realistic sample data covering all valid tables, roles, types, and statuses |
-| `06-normal-testcases-G02.sql` | SELECT queries to verify data integrity and constraint acceptance (expected: OK) |
-| `06-exceptional-testcases-G02.sql` | INSERT statements that violate constraints (expected: FAIL) |
+| File                               | Purpose                                                                          |
+| ---------------------------------- | -------------------------------------------------------------------------------- |
+| `06-sample-data-G02.sql`           | Realistic sample data covering all valid tables, roles, types, and statuses      |
+| `06-normal-testcases-G02.sql`      | SELECT queries to verify data integrity and constraint acceptance (expected: OK) |
+| `06-exceptional-testcases-G02.sql` | INSERT statements that violate constraints (expected: FAIL)                      |
 
 ## Normal Test Cases
 
@@ -323,3 +323,18 @@ The following business rules are defined in the business requirements but are no
 2. Add some additional guideline and notes for some instruction files
 3. Rename the output files' names in AGENT.md
 4. Regenerate output with the updated guidelines
+
+---
+
+# Student Work Report
+
+**Name:** Nguyễn Minh Tâm
+**Student ID:** 24125042
+**Task:** Add 5 queries
+
+## Tasks have been done
+1. Find lists of booking that a specific staff accepted
+2. Find users who always appear later after the requested start time
+3. Find spaces that are booked most
+4. Find spaces that are under maintenance
+5. Find spaces with the highest booking cancellation rate
