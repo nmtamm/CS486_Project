@@ -27,6 +27,7 @@ Create or update the following files:
 3. `outputs/03-logical-design-G02.md`
 4. `outputs/04-design-validation-G02.md`
 5. `outputs/05-db-definition-G02.sql`
+6. `outputs/06-sample-data-G02.sql`
 Do not skip any Markdown file.
 
 ---
@@ -40,3 +41,4 @@ Do not skip any Markdown file.
 | 3 | [Logical Database Design](step-03-logical-database-design/INSTRUCTION.md)
 | 4 | [Database Design Validation](step-04-database-design-validation/INSTRUCTION.md)
 | 5 | [Database Implementation](step-05-database-implementation/INSTRUCTION.md)
+| 6 | [Sample Data Preparation](step-06-sample-data/INSTRUCTION.md)
