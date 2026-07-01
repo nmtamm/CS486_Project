@@ -329,7 +329,9 @@ The following business rules are defined in the business requirements but are no
 # Student Work Report
 
 **Name:** Nguyễn Minh Tâm
+
 **Student ID:** 24125042
+
 **Task:** Add 5 queries
 
 ## Tasks have been done
@@ -353,3 +355,20 @@ The following business rules are defined in the business requirements but are no
 3. Which spaces have never been booked?
 4. Find spaces with the number of booking request where expected participants exceed the space capacity
 5. How many unresolved maintenance records does each space currently have?
+
+---
+
+# Student Work Report
+
+**Name:** Trịnh Võ Nam Kiệt
+
+**Student ID:** 24125013
+
+**Task:** Add 5 queries
+
+## Tasks have been done
+1. Find the current distribution of bookings across all statuses
+2. Find which spaces have the most pending booking requests waiting for approval
+3. Find which spaces generate the most maintenance requests and what problem types recur per space
+4. Find the distribution of bookings by purpose
+5. Find which users have the most bookings overall
