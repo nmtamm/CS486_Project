@@ -338,3 +338,18 @@ The following business rules are defined in the business requirements but are no
 3. Find spaces that are booked most
 4. Find spaces that are under maintenance
 5. Find spaces with the highest booking cancellation rate
+
+---
+
+# Student Work Report
+
+**Name:** Trần Trung Hậu
+**Student ID:** 24125055
+**Task:** Add 5 queries for Step 7
+
+## Tasks have been done
+1. Which approved bookings do not have any recorded check-in session yet?
+2. Which completed bookings ended later than their requested end time?
+3. Which spaces have never been booked?
+4. Find spaces with the number of booking request where expected participants exceed the space capacity
+5. How many unresolved maintenance records does each space currently have?
