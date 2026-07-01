@@ -389,3 +389,7 @@ The following business rules are defined in the business requirements but are no
 3. Find the most common rejection reasons provided by staff
 4. Find which campus amenities/facilities are equipped in the spaces that receive the highest volume of booking requests
 5. Find which classrooms or meeting rooms with a capacity of at least 5 people are currently available and equipped with a projector for upcoming group study sessions
+
+## SQL Functions Explanation
+- **`CAST` (in Query 1):** The `expected_participants` column is stored as an integer. In SQL Server, taking the average (`AVG`) of integers performs integer division and discards decimal values (e.g., averaging `1` and `2` returns `1`). Casting it to `DECIMAL` preserves the decimal points in the result.
+- **`LOWER` (in Query 5):** Converts the facility names to lowercase before checking. This makes the search case-insensitive, ensuring that "Projector", "projector", and "PROJECTOR" are all matched correctly.
