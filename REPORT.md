@@ -372,3 +372,20 @@ The following business rules are defined in the business requirements but are no
 3. Find which spaces generate the most maintenance requests and what problem types recur per space
 4. Find the distribution of bookings by purpose
 5. Find which users have the most bookings overall
+
+---
+
+# Student Work Report
+
+**Name:** Võ Huy Dâng
+
+**Student ID:** 20125022
+
+**Task:** Add 5 queries
+
+## Tasks have been done
+1. Find the total number of bookings and average expected participants for each space type
+2. Find which departments have the highest number of "no-show" bookings
+3. Find the most common rejection reasons provided by staff
+4. Find which campus amenities/facilities are equipped in the spaces that receive the highest volume of booking requests
+5. Find which classrooms or meeting rooms with a capacity of at least 5 people are currently available and equipped with a projector for upcoming group study sessions
