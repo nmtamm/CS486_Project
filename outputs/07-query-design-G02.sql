@@ -128,7 +128,7 @@ ORDER BY minutes_late DESC;
 -- Target user: Facility Manager
 -- Short explanation: Helps identify underutilized spaces that may require promotion, repurposing, or further investigation
 SELECT cs.campus_space_code, cs.space_name, cs.space_type, cs.building, cs.room_number, cs.capacity
-FROM CampusSpace cs LEFT JOIN sb on sb.campus_space_code = cs.campus_space_code
+FROM CampusSpace cs LEFT JOIN SpaceBooking sb on sb.campus_space_code = cs.campus_space_code
 WHERE sb.campus_space_code IS NULL;
 
 -- Business question: Find spaces with the number of booking request where expected participants exceed the space capacity
