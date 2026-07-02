@@ -126,7 +126,9 @@ VALUES
     (5, 5, 'A101', '2026-06-22 10:00:00', '2026-06-22 12:00:00', 'administrative_event', 180, 'rejected',           '2026-06-17 08:00:00'),
     (6, 5, 'D401', '2026-06-26 08:00:00', '2026-06-26 10:00:00', 'student_activity',     10, 'cancelled',          '2026-06-19 10:00:00'),
     (7, 4, 'B201', '2026-06-23 07:00:00', '2026-06-23 09:00:00', 'seminar',              45, 'no-show',            '2026-06-18 07:00:00'),
-    (8, 5, 'E501', '2026-07-10 08:00:00', '2026-07-10 10:00:00', 'lecture',              30, 'pending',            '2026-06-28 08:00:00');
+    (8, 5, 'E501', '2026-07-10 08:00:00', '2026-07-10 10:00:00', 'lecture',              30, 'pending',            '2026-06-28 08:00:00'),
+    (9, 5, 'B201', '2026-07-15 08:00:00', '2026-07-15 10:00:00', 'meeting',              20, 'approved',           '2026-07-01 09:00:00'),
+    (10, 4, 'D401','2026-07-20 13:00:00', '2026-07-20 15:00:00', 'seminar',              35, 'pending',            '2026-07-05 08:00:00');
 GO
 
 SET IDENTITY_INSERT SpaceBooking OFF;
@@ -146,7 +148,8 @@ VALUES
     (2, 2, 1, 'approved', '2026-06-24 10:00:00', N'Meeting room approved.',                     NULL),
     (3, 3, 2, 'approved', '2026-06-19 09:30:00', N'Workshop approved. Ensure computers ready.', NULL),
     (4, 5, 2, 'rejected', '2026-06-18 09:00:00', NULL,                                          N'A101 already booked at that time.'),
-    (5, 7, 2, 'approved', '2026-06-19 10:00:00', N'Seminar approved.',                          NULL);
+    (5, 7, 2, 'approved', '2026-06-19 10:00:00', N'Seminar approved.',                          NULL),
+    (6, 9, 2, 'approved', '2026-07-02 09:00:00', N'Approved.',                                  NULL);
 GO
 
 SET IDENTITY_INSERT BookingApproval OFF;
