@@ -1,4 +1,4 @@
-﻿USE SpaceBookingDB
+USE SpaceBookingDB
 GO
 
 -- ----------------------------------------------------------------------------
@@ -148,3 +148,91 @@ FROM CampusSpace cs JOIN SpaceMaintenance sm ON sm.campus_space_code = cs.campus
 WHERE sm.status <> 'completed' AND sm.status <> 'cancelled'
 GROUP BY cs.campus_space_code, cs.space_name
 ORDER BY COUNT(sm.space_maintenance_id) DESC;
+
+
+-- ----------------------------------------------------------------------------
+-- Vo Huy Dang
+-- 20125022
+-- ----------------------------------------------------------------------------
+
+-- Business question: What is the total number of bookings and average expected participants for each space type
+-- Target user: Facility Manager
+-- Short explanation: Helps management understand which types of spaces are in highest demand and whether spaces are being utilized appropriately relative to their capacity
+SELECT 
+    s.space_type,
+    COUNT(b.space_booking_id) AS total_bookings,
+    ISNULL(AVG(CAST(b.expected_participants AS DECIMAL(10, 2))), 0.00) AS avg_expected_participants
+FROM 
+    CampusSpace s
+LEFT JOIN 
+    SpaceBooking b ON s.campus_space_code = b.campus_space_code
+GROUP BY 
+    s.space_type;
+
+-- Business question: Which departments have the highest number of "no-show" bookings?
+-- Target user: Facility Manager, Department Administrator
+-- Short explanation: Identifies academic departments that frequently reserve shared spaces without actually using them
+SELECT 
+    u.department,
+    COUNT(b.space_booking_id) AS no_show_bookings
+FROM 
+    CampusUser u
+JOIN 
+    SpaceBooking b ON u.campus_user_id = b.requester_id
+WHERE 
+    b.status = 'no-show'
+GROUP BY 
+    u.department
+ORDER BY 
+    no_show_bookings DESC;
+
+-- Business question: What are the most common rejection reasons provided by staff?
+-- Target user: Department Administrator, Facility Manager
+-- Short explanation: Provides transparency into why requests fail, helping administrators provide clearer booking guidelines to students and faculty to improve approval rates.
+SELECT 
+    rejection_reason,
+    COUNT(*) AS occurrence_count
+FROM 
+    BookingApproval
+WHERE 
+    decision = 'rejected'
+GROUP BY 
+    rejection_reason
+ORDER BY 
+    occurrence_count DESC;
+
+-- Business question: Which campus amenities/facilities (e.g., projectors, specialized software labs) are equipped in the spaces that receive the highest volume of booking requests?
+-- Target user: Facility Manager, Department Administrator
+-- Short explanation: Directs future procurement budgets by revealing which equipment features drive the most demand among students and staff.
+SELECT 
+    f.facility_name,
+    COUNT(b.space_booking_id) AS total_bookings_received,
+    COUNT(DISTINCT sf.campus_space_code) AS equipped_spaces_count
+FROM 
+    CampusFacility f
+JOIN 
+    CampusSpaceFacility sf ON f.campus_facility_id = sf.campus_facility_id
+JOIN 
+    SpaceBooking b ON sf.campus_space_code = b.campus_space_code
+GROUP BY 
+    f.facility_name
+ORDER BY 
+    total_bookings_received DESC;
+
+-- Business question: Which classrooms or meeting rooms with a capacity of at least 5 people are currently available and equipped with a projector for upcoming group study sessions?
+-- Target user: Student
+-- Short explanation: Allows students to filter and find suitable study spaces that meet their group size and presentation equipment needs before submitting a booking request. 
+SELECT 
+    s.campus_space_code,
+    s.space_name
+FROM 
+    CampusSpace s
+JOIN 
+    CampusSpaceFacility sf ON s.campus_space_code = sf.campus_space_code
+JOIN 
+    CampusFacility f ON sf.campus_facility_id = f.campus_facility_id
+WHERE 
+    s.space_type IN ('classroom', 'meeting_room')
+    AND s.capacity >= 5
+    AND s.current_status = 'available'
+    AND LOWER(f.facility_name) = 'projector';
