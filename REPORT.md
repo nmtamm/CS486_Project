@@ -368,10 +368,10 @@ The following business rules are defined in the business requirements but are no
 
 ## Tasks have been done
 1. Find the current distribution of bookings across all statuses
-2. Find which spaces have the most pending booking requests waiting for approval
-3. Find which spaces generate the most maintenance requests and what problem types recur per space
+2. Find the 5 spaces with the most pending booking requests
+3. Find the 5 most common maintenance request problem types per space
 4. Find the distribution of bookings by purpose
-5. Find which users have the most bookings overall
+5. Find the 5 users with the most bookings
 
 ---
 

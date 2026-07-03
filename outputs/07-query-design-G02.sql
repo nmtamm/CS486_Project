@@ -47,25 +47,25 @@ FROM SpaceBooking
 GROUP BY status
 ORDER BY cnt DESC;
 
--- Business question: Which spaces have the most pending booking requests waiting for approval?
+-- Business question: Find the 5 spaces with the most pending booking requests
 -- Target user: Facility Staff
 -- Short explanation: Helps staff prioritize which spaces need approval decisions first.
 
-SELECT campus_space_code, COUNT(*) AS pending_cnt
+SELECT TOP 5 campus_space_code, COUNT(*) AS pending_cnt
 FROM SpaceBooking
 WHERE status = 'pending'
 GROUP BY campus_space_code
 ORDER BY pending_cnt DESC;
 
--- Business question: Which spaces generate the most maintenance requests and what problem types recur per space?
+-- Business question: Find the 5 most common maintenance request problem types per space
 -- Target user: Facility Manager
 -- Short explanation: Detects recurring issues in specific locations to guide preventive maintenance budgets.
 
-SELECT s.campus_space_code, mr.problem_type, COUNT(*) AS cnt
+SELECT TOP 5 s.campus_space_code, mr.problem_type, COUNT(*) AS cnt
 FROM SpaceMaintenance mr
 JOIN CampusSpace s ON mr.campus_space_code = s.campus_space_code
 GROUP BY s.campus_space_code, mr.problem_type
-ORDER BY s.campus_space_code, cnt DESC;
+ORDER BY cnt DESC;
 
 -- Business question: What is the distribution of bookings by purpose?
 -- Target user: Facility Manager
@@ -76,11 +76,11 @@ FROM SpaceBooking
 GROUP BY purpose_type
 ORDER BY cnt DESC;
 
--- Business question: Which users have the most bookings overall?
+-- Business question: Find the 5 users with the most bookings
 -- Target user: Facility Manager
 -- Short explanation: Identifies the most frequent space users across all roles.
 
-SELECT requester_id, COUNT(*) AS booking_cnt
+SELECT TOP 5 requester_id, COUNT(*) AS booking_cnt
 FROM SpaceBooking
 GROUP BY requester_id
 ORDER BY booking_cnt DESC;
