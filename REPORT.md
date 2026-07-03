@@ -12,12 +12,12 @@
 
 The [output document](outputs/01-business-req-analysis-G02.md) consists of 4 sections:
 
-| Section                                    | Description                                                                                               |
-| ------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
-| **1. Business Purpose**                    | Identifies the core problem, main objectives, and scope of the system.                                    |
-| **2. Actors**                              | Lists user roles, responsibilities, and interactions with the system.                                     |
-| **3. Business Data Entities & Attributes** | Identifies main entities, identifiers, required/optional attributes, and predefined values (enum).        |
-| **4. Business Rules**                      | Extracts constraints, policies, business rules, lifecycle, and state transitions.                         |
+| Section                                    | Description                                                                                        |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| **1. Business Purpose**                    | Identifies the core problem, main objectives, and scope of the system.                             |
+| **2. Actors**                              | Lists user roles, responsibilities, and interactions with the system.                              |
+| **3. Business Data Entities & Attributes** | Identifies main entities, identifiers, required/optional attributes, and predefined values (enum). |
+| **4. Business Rules**                      | Extracts constraints, policies, business rules, lifecycle, and state transitions.                  |
 
 ## 2. Iterative clarification loop
 Ambiguous points were resolved via the `question` tool before finalizing business rules.
@@ -176,11 +176,11 @@ Rewrite instruction for step 01 and use Big Pickle to regenerate the output for 
 
 Step 6 produces **3 separate SQL files** built from the DDL in Step 5:
 
-| File | Purpose |
-|------|---------|
-| `06-sample-data-G02.sql` | Realistic sample data covering all valid tables, roles, types, and statuses |
-| `06-normal-testcases-G02.sql` | SELECT queries to verify data integrity and constraint acceptance (expected: OK) |
-| `06-exceptional-testcases-G02.sql` | INSERT statements that violate constraints (expected: FAIL) |
+| File                               | Purpose                                                                          |
+| ---------------------------------- | -------------------------------------------------------------------------------- |
+| `06-sample-data-G02.sql`           | Realistic sample data covering all valid tables, roles, types, and statuses      |
+| `06-normal-testcases-G02.sql`      | SELECT queries to verify data integrity and constraint acceptance (expected: OK) |
+| `06-exceptional-testcases-G02.sql` | INSERT statements that violate constraints (expected: FAIL)                      |
 
 ## Normal Test Cases
 
@@ -323,3 +323,73 @@ The following business rules are defined in the business requirements but are no
 2. Add some additional guideline and notes for some instruction files
 3. Rename the output files' names in AGENT.md
 4. Regenerate output with the updated guidelines
+
+---
+
+# Student Work Report
+
+**Name:** Nguyễn Minh Tâm
+
+**Student ID:** 24125042
+
+**Task:** Add 5 queries
+
+## Tasks have been done
+1. Find lists of booking that a specific staff accepted
+2. Find users who always appear later after the requested start time
+3. Find spaces that are booked most
+4. Find spaces that are under maintenance
+5. Find spaces with the highest booking cancellation rate
+
+---
+
+# Student Work Report
+
+**Name:** Trần Trung Hậu
+**Student ID:** 24125055
+**Task:** Add 5 queries for Step 7
+
+## Tasks have been done
+1. Which approved bookings do not have any recorded check-in session yet?
+2. Which completed bookings ended later than their requested end time?
+3. Which spaces have never been booked?
+4. Find spaces with the number of booking request where expected participants exceed the space capacity
+5. How many unresolved maintenance records does each space currently have?
+
+---
+
+# Student Work Report
+
+**Name:** Trịnh Võ Nam Kiệt
+
+**Student ID:** 24125013
+
+**Task:** Add 5 queries
+
+## Tasks have been done
+1. Find the current distribution of bookings across all statuses
+2. Find the 5 spaces with the most pending booking requests
+3. Find the 5 most common maintenance request problem types per space
+4. Find the distribution of bookings by purpose
+5. Find the 5 users with the most bookings
+
+---
+
+# Student Work Report
+
+**Name:** Võ Huy Dâng
+
+**Student ID:** 20125022
+
+**Task:** Add 5 queries
+
+## Tasks have been done
+1. Find the total number of bookings and average expected participants for each space type
+2. Find which departments have the highest number of "no-show" bookings
+3. Find the most common rejection reasons provided by staff
+4. Find which campus amenities/facilities are equipped in the spaces that receive the highest volume of booking requests
+5. Find which classrooms or meeting rooms with a capacity of at least 5 people are currently available and equipped with a projector for upcoming group study sessions
+
+## SQL Functions Explanation
+- **`CAST` (in Query 1):** The `expected_participants` column is stored as an integer. In SQL Server, taking the average (`AVG`) of integers performs integer division and discards decimal values (e.g., averaging `1` and `2` returns `1`). Casting it to `DECIMAL` preserves the decimal points in the result.
+- **`LOWER` (in Query 5):** Converts the facility names to lowercase before checking. This makes the search case-insensitive, ensuring that "Projector", "projector", and "PROJECTOR" are all matched correctly.
