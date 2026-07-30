@@ -66,31 +66,17 @@ CREATE TABLE CampusFacility (
     campus_facility_id INT           NOT NULL IDENTITY(1,1),
     facility_name      NVARCHAR(100) NOT NULL,
     description        NVARCHAR(255) NULL,
+    campus_space_code        NVARCHAR(20),
+    status           NVARCHAR(20)  NOT NULL DEFAULT 'available',
 
     PRIMARY KEY (campus_facility_id),
-    UNIQUE (facility_name)
-);
-
-
--- ----------------------------------------------------------------------------
--- 4. CAMPUS SPACE FACILITY (Bridge Table)
--- ----------------------------------------------------------------------------
-CREATE TABLE CampusSpaceFacility (
-    campus_space_facility_id INT          NOT NULL IDENTITY(1,1),
-    campus_space_code        NVARCHAR(20) NOT NULL,
-    campus_facility_id       INT          NOT NULL,
-    quantity                 INT          NOT NULL DEFAULT 1,
-
-    PRIMARY KEY (campus_space_facility_id),
-    UNIQUE (campus_space_code, campus_facility_id),
     FOREIGN KEY (campus_space_code) REFERENCES CampusSpace (campus_space_code),
-    FOREIGN KEY (campus_facility_id) REFERENCES CampusFacility (campus_facility_id),
-    CHECK (quantity > 0)
+    UNIQUE (facility_name),
+    CHECK (status IN ('available', 'in_use', 'under_maintenance'))
 );
 
-
 -- ----------------------------------------------------------------------------
--- 5. SPACE BOOKING
+-- 4. SPACE BOOKING
 -- ----------------------------------------------------------------------------
 CREATE TABLE SpaceBooking (
     space_booking_id        INT           NOT NULL IDENTITY(1,1),
@@ -120,7 +106,7 @@ CREATE TABLE SpaceBooking (
 
 
 -- ----------------------------------------------------------------------------
--- 6. BOOKING APPROVAL
+-- 5. BOOKING APPROVAL
 -- ----------------------------------------------------------------------------
 CREATE TABLE BookingApproval (
     booking_approval_id INT           NOT NULL IDENTITY(1,1),
@@ -145,7 +131,7 @@ CREATE TABLE BookingApproval (
 
 
 -- ----------------------------------------------------------------------------
--- 7. SPACE USAGE SESSION
+-- 6. SPACE USAGE SESSION
 -- ----------------------------------------------------------------------------
 CREATE TABLE SpaceUsageSession (
     space_usage_session_id INT           NOT NULL IDENTITY(1,1),
@@ -165,7 +151,7 @@ CREATE TABLE SpaceUsageSession (
 
 
 -- ----------------------------------------------------------------------------
--- 8. SPACE MAINTENANCE
+-- 7. SPACE MAINTENANCE
 -- ----------------------------------------------------------------------------
 CREATE TABLE SpaceMaintenance (
     space_maintenance_id INT           NOT NULL IDENTITY(1,1),
@@ -189,3 +175,158 @@ CREATE TABLE SpaceMaintenance (
     )),
     CHECK (status IN ('reported', 'in_progress', 'completed', 'cancelled'))
 );
+
+
+-- ============================================================================
+-- TRIGGERS
+-- ============================================================================
+
+-- ----------------------------------------------------------------------------
+-- TRG-01: Prevent overlapping approved bookings (BR-01)
+-- Trigger Type: AFTER INSERT, UPDATE
+-- On: SpaceBooking
+-- ----------------------------------------------------------------------------
+CREATE TRIGGER trg_SpaceBooking_NoOverlap
+ON SpaceBooking
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF EXISTS (
+        SELECT 1
+        FROM inserted i
+        WHERE i.status = 'approved'
+          AND EXISTS (
+              SELECT 1
+              FROM SpaceBooking sb
+              WHERE sb.campus_space_code = i.campus_space_code
+                AND sb.status = 'approved'
+                AND sb.space_booking_id <> i.space_booking_id
+                AND sb.requested_start_time < i.requested_end_time
+                AND sb.requested_end_time > i.requested_start_time
+          )
+    )
+    BEGIN
+        RAISERROR('BR-01 violation: Overlapping approved booking exists for this space.', 16, 1);
+        ROLLBACK TRANSACTION;
+        RETURN;
+    END;
+END;
+GO
+
+
+-- ----------------------------------------------------------------------------
+-- TRG-02: Validate booking status transitions (BR-03)
+-- Allowed flow: pending → approved/rejected/cancelled → checked_in → completed/no-show
+-- Trigger Type: AFTER INSERT, UPDATE
+-- On: SpaceBooking
+-- ----------------------------------------------------------------------------
+CREATE TRIGGER trg_SpaceBooking_StatusTransition
+ON SpaceBooking
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- INSERT check: new bookings must have status 'pending'
+    IF EXISTS (
+        SELECT 1 FROM inserted i
+        WHERE NOT EXISTS (SELECT 1 FROM deleted)
+          AND i.status <> 'pending'
+    )
+    BEGIN
+        RAISERROR('BR-03 violation: New booking status must be ''pending''.', 16, 1);
+        ROLLBACK TRANSACTION;
+        RETURN;
+    END;
+
+    -- UPDATE check: validate status transition
+    IF UPDATE(status)
+    BEGIN
+        IF EXISTS (
+            SELECT 1
+            FROM inserted i
+            JOIN deleted d ON i.space_booking_id = d.space_booking_id
+            WHERE i.status <> d.status
+              AND NOT (
+                  (d.status = 'pending' AND i.status IN ('approved', 'rejected', 'cancelled'))
+                  OR
+                  (d.status = 'approved' AND i.status = 'checked_in')
+                  OR
+                  (d.status = 'checked_in' AND i.status IN ('completed', 'no-show'))
+              )
+        )
+        BEGIN
+            RAISERROR('BR-03 violation: Invalid booking status transition.', 16, 1);
+            ROLLBACK TRANSACTION;
+            RETURN;
+        END;
+    END;
+END;
+GO
+
+
+-- ----------------------------------------------------------------------------
+-- TRG-03: Prevent expected_participants exceeding space capacity (BR-07)
+-- Trigger Type: AFTER INSERT, UPDATE
+-- On: SpaceBooking
+-- ----------------------------------------------------------------------------
+CREATE TRIGGER trg_SpaceBooking_CapacityCheck
+ON SpaceBooking
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF EXISTS (
+        SELECT 1
+        FROM inserted i
+        JOIN CampusSpace cs ON i.campus_space_code = cs.campus_space_code
+        WHERE i.expected_participants > cs.capacity
+    )
+    BEGIN
+        RAISERROR('BR-07 violation: Expected participants exceed space capacity.', 16, 1);
+        ROLLBACK TRANSACTION;
+        RETURN;
+    END;
+END;
+GO
+
+
+-- ----------------------------------------------------------------------------
+-- TRG-04: Auto-update CampusSpace.current_status on maintenance changes (Issue 3)
+-- Trigger Type: AFTER INSERT, UPDATE
+-- On: SpaceMaintenance
+-- ----------------------------------------------------------------------------
+CREATE TRIGGER trg_SpaceMaintenance_UpdateSpaceStatus
+ON SpaceMaintenance
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- When maintenance becomes active (reported/in_progress), set space to under_maintenance
+    UPDATE cs
+    SET current_status = 'under_maintenance'
+    FROM CampusSpace cs
+    JOIN inserted i ON cs.campus_space_code = i.campus_space_code
+    WHERE i.status IN ('reported', 'in_progress')
+      AND cs.current_status NOT IN ('temporarily_closed', 'retired');
+
+    -- When maintenance becomes inactive (completed/cancelled), restore if no other active
+    UPDATE cs
+    SET current_status = 'available'
+    FROM CampusSpace cs
+    JOIN inserted i ON cs.campus_space_code = i.campus_space_code
+    WHERE i.status IN ('completed', 'cancelled')
+      AND cs.current_status = 'under_maintenance'
+      AND NOT EXISTS (
+          SELECT 1
+          FROM SpaceMaintenance sm
+          WHERE sm.campus_space_code = i.campus_space_code
+            AND sm.status IN ('reported', 'in_progress')
+            AND sm.space_maintenance_id <> i.space_maintenance_id
+      );
+END;
+GO

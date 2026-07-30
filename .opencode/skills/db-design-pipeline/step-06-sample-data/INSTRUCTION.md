@@ -143,9 +143,18 @@ Examples of what to test (use actual table and column names from your project):
   GROUP BY [status_column];
   ```
 
+- **Trigger verification**: Verify data matches expected trigger
+  ```sql
+  -- TC-N60: Count [status_column] 
+  -- Expected: >= 1
+  SELECT COUNT(*) AS count
+  FROM [table_name] 
+  WHERE condition;
+  ```
+
 Requirements:
 
-- Every implemented CHECK, UNIQUE, NOT NULL, PRIMARY KEY, and FOREIGN KEY constraint should have at least one normal test case confirming it accepts valid data.
+- Every implemented CHECK, UNIQUE, NOT NULL, PRIMARY KEY, and FOREIGN KEY, TRIGGER constraint should have at least one normal test case confirming it accepts valid data.
 - All normal test cases must pass (return the expected result) when executed against the database loaded with the sample data from File 1.
 - Use realistic expected values based on the actual data inserted in File 1.
 - This file must `USE` the database created in Step 5 as its first statement, and include `GO` statements as needed for batch execution.

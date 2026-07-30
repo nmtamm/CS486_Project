@@ -207,13 +207,11 @@ ORDER BY
 SELECT 
     f.facility_name,
     COUNT(b.space_booking_id) AS total_bookings_received,
-    COUNT(DISTINCT sf.campus_space_code) AS equipped_spaces_count
+    COUNT(DISTINCT f.campus_space_code) AS equipped_spaces_count
 FROM 
     CampusFacility f
 JOIN 
-    CampusSpaceFacility sf ON f.campus_facility_id = sf.campus_facility_id
-JOIN 
-    SpaceBooking b ON sf.campus_space_code = b.campus_space_code
+    SpaceBooking b ON f.campus_space_code = b.campus_space_code
 GROUP BY 
     f.facility_name
 ORDER BY 
@@ -228,9 +226,7 @@ SELECT
 FROM 
     CampusSpace s
 JOIN 
-    CampusSpaceFacility sf ON s.campus_space_code = sf.campus_space_code
-JOIN 
-    CampusFacility f ON sf.campus_facility_id = f.campus_facility_id
+    CampusFacility f ON s.campus_space_code = f.campus_space_code
 WHERE 
     s.space_type IN ('classroom', 'meeting_room')
     AND s.capacity >= 5

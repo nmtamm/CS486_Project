@@ -77,8 +77,10 @@ The School of Computer Science manages shared physical spaces (auditoriums, clas
 | Attribute | Description | Notes |
 |---|---|---|
 | campus_facility_id | Unique identifier | PK |
-| facility_name | e.g., projector, whiteboard, microphone, computer, livestreaming equipment, air conditioner | |
+| facility_type | e.g., projector, whiteboard, microphone, computer, livestreaming equipment, air conditioner | |
 | description | Optional description | |
+| campus_space_code | Campus space where the facility is installed | FK → CampusSpace |
+| status | available, in_use, under_maintenance | |
 
 ### E4 — SpaceBooking
 
@@ -140,7 +142,7 @@ The School of Computer Science manages shared physical spaces (auditoriums, clas
 
 - R1 — A campus user can submit as many space bookings as they want.
 - R2 — A campus space can be booked in many space bookings over time.
-- R3 — A campus space can be equipped with many different campus facilities, and a campus facility can be installed in many different campus spaces.
+- R3 — A campus space can contain many campus facilities, while each campus facility is installed in exactly one campus space at a time
 - R4 — A space booking may receive at most one approval decision.
 - R5 — A facility staff member or manager can approve as many booking requests as needed.
 - R6 — A space booking may result in at most one usage session when checked in.
@@ -178,7 +180,7 @@ The School of Computer Science manages shared physical spaces (auditoriums, clas
 | A4 | Check-in and check-out are always performed by facility staff, not by the requester. |
 | A5 | A space can be used without a prior booking for walk-in usage, but the system requires at least a booking record. |
 | A6 | Maintenance records can exist without a linked booking. |
-| A7 | Facility types are predefined and managed via a lookup table. |
+| A7 | Each campus facility represents a unique physical asset assigned to exactly one campus space. Facility types (e.g., projector, computer, whiteboard) are predefined and managed through a lookup table or enumeration. |
 
 ---
 

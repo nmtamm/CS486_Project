@@ -34,15 +34,10 @@ erDiagram
 
     CampusFacility {
         int campus_facility_id PK
-        nvarchar facility_name UK
+        nvarchar facility_type UK
         nvarchar description
-    }
-
-    CampusSpaceFacility {
-        int campus_space_facility_id PK
-        nvarchar campus_space_code FK
-        int campus_facility_id FK
-        int quantity
+        int campus_space_code FK
+        nvarchar status "Values: available, in_use, under_maintenance"
     }
 
     SpaceBooking {
@@ -99,9 +94,8 @@ erDiagram
     %% R2: CampusSpace is booked in SpaceBooking (1:N)
     CampusSpace ||--o{ SpaceBooking : "is booked in"
 
-    %% R3: CampusSpace has CampusFacilities (M:N via CampusSpaceFacility)
-    CampusSpace ||--o{ CampusSpaceFacility : "contains"
-    CampusFacility ||--o{ CampusSpaceFacility : "is installed in"
+    %% R3: CampusSpace has CampusFacilities (1:N)
+    CampusSpace ||--o{ CampusFacility : "contains"
 
     %% R4: SpaceBooking has BookingApproval (1:0..1)
     SpaceBooking ||--o| BookingApproval : "has"
@@ -138,19 +132,16 @@ A bookable physical room or area on campus managed by the School of Computer Sci
 ### 2.3. CampusFacility
 A piece of equipment or amenity that may be installed in a campus space (e.g., projector, whiteboard, air conditioner).
 
-### 2.4. CampusSpaceFacility
-Associative (bridge) entity resolving the many-to-many relationship between CampusSpace and CampusFacility. Records which facilities are available in which campus spaces.
-
-### 2.5. SpaceBooking
+### 2.4. SpaceBooking
 A booking request submitted by a campus user to reserve a specific campus space for a specific time period and purpose.
 
-### 2.6. BookingApproval
+### 2.5. BookingApproval
 The decision record for a space booking. Linked to exactly one booking. Captures who decided, when, and any notes.
 
-### 2.7. SpaceUsageSession
+### 2.6. SpaceUsageSession
 The actual usage record when a booking is checked in and later checked out. Tracks real start/end times and space condition.
 
-### 2.8. SpaceMaintenance
+### 2.7. SpaceMaintenance
 A log of a maintenance issue reported for a campus space. Tracks problem description, assignment, status, and resolution.
 
 ---
@@ -161,7 +152,7 @@ A log of a maintenance issue reported for a campus space. Tracks problem descrip
 |---|---|---|---|---|
 | R1 | CampusUser | SpaceBooking | 1:N | CampusUser: optional, SpaceBooking: mandatory |
 | R2 | CampusSpace | SpaceBooking | 1:N | CampusSpace: optional, SpaceBooking: mandatory |
-| R3 | CampusSpace | CampusFacility (via CampusSpaceFacility) | M:N | Both optional |
+| R3 | CampusSpace | CampusFacility | 1:N | Both optional |
 | R4 | SpaceBooking | BookingApproval | 1:0..1 | SpaceBooking: optional, BookingApproval: mandatory |
 | R5 | CampusUser (staff) | BookingApproval | 1:N | CampusUser: optional, BookingApproval: mandatory |
 | R6 | SpaceBooking | SpaceUsageSession | 1:0..1 | SpaceBooking: optional, SpaceUsageSession: mandatory |
@@ -179,7 +170,6 @@ A log of a maintenance issue reported for a campus space. Tracks problem descrip
 | CampusUser | E1 |
 | CampusSpace | E2 |
 | CampusFacility | E3 |
-| CampusSpaceFacility | R3 (M:N between CampusSpace and CampusFacility) |
 | SpaceBooking | E4 |
 | BookingApproval | E5 |
 | SpaceUsageSession | E6 |

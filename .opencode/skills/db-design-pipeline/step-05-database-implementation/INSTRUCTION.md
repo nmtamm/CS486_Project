@@ -57,5 +57,4 @@ ALTER TABLE [table-name] DROP CONSTRAINT...
 ### NOTES
 1. No need to name constraints
 2. If table name is a keyword or a built-in function in MySQL, raise that as an error. **DO NOT TRY TO USE SQUARE BRACKET [...] TO TRIGGER THE DATABASE TO USE AS AN OBJECT NAME**
-3. **TRIGGER ARE NOT YET ASKED FOR IN THIS STEP**. If there is any trigger, skip it for now.
-4. **INDEXES ARE NOT YET ASKED FOR IN THIS STEP**. The constraint (if exists) should only be checked using **CHECK** only. Other constraints that needs triggering or procedure are not asked to be included when defining the database yet.
+3. **INDEXES ARE NOT YET ASKED FOR IN THIS STEP**. The constraint (if exists) should only be checked using **CHECK** only. Other constraints that needs triggering or procedure are not asked to be included when defining the database yet.

@@ -22,7 +22,6 @@
 flowchart LR
 
 subgraph USR ["`**CampusUser**`"]
-direction LR
 USR1["`**🔑 campus_user_id**`"] ~~~
 USR2["full_name"] ~~~
 USR3["`⭐ email`"] ~~~
@@ -33,7 +32,6 @@ USR7["account_status"]
 end
 
 subgraph SPC ["`**CampusSpace**`"]
-direction LR
 SPC1["`**🔑 campus_space_code**`"] ~~~
 SPC2["space_name"] ~~~
 SPC3["space_type"] ~~~
@@ -46,22 +44,13 @@ SPC9["usage_policy"]
 end
 
 subgraph FAC ["`**CampusFacility**`"]
-direction LR
 FAC1["`**🔑 campus_facility_id**`"] ~~~
-FAC2["`⭐ facility_name`"] ~~~
-FAC3["description"]
-end
-
-subgraph CSF ["`**CampusSpaceFacility**`"]
-direction LR
-CSF1["`**🔑 campus_space_facility_id**`"] ~~~
-CSF2["`*🔗 campus_space_code*`"] ~~~
-CSF3["`*🔗 campus_facility_id*`"] ~~~
-CSF4["quantity"]
+FAC2["`⭐ facility_type`"] ~~~
+FAC3["description"]~~~
+FAC4["`*🔗campus_space_code*`"]
 end
 
 subgraph BKG ["`**SpaceBooking**`"]
-direction LR
 BKG1["`**🔑 space_booking_id**`"] ~~~
 BKG2["`*🔗 requester_id*`"] ~~~
 BKG3["`*🔗 campus_space_code*`"] ~~~
@@ -74,7 +63,6 @@ BKG9["submitted_at"]
 end
 
 subgraph APR ["`**BookingApproval**`"]
-direction LR
 APR1["`**🔑 booking_approval_id**`"] ~~~
 APR2["`*🔗 space_booking_id*`"] ~~~
 APR3["`*🔗 staff_id*`"] ~~~
@@ -85,7 +73,6 @@ APR7["rejection_reason"]
 end
 
 subgraph SES ["`**SpaceUsageSession**`"]
-direction LR
 SES1["`**🔑 space_usage_session_id**`"] ~~~
 SES2["`*🔗 space_booking_id*`"] ~~~
 SES3["`*🔗 checked_in_by*`"] ~~~
@@ -97,7 +84,6 @@ SES8["usage_notes"]
 end
 
 subgraph MNT ["`**SpaceMaintenance**`"]
-direction LR
 MNT1["`**🔑 space_maintenance_id**`"] ~~~
 MNT2["`*🔗 campus_space_code*`"] ~~~
 MNT3["`*🔗 reporter_id*`"] ~~~
@@ -112,8 +98,7 @@ end
 
 BKG2 --> USR1
 BKG3 --> SPC1
-CSF2 --> SPC1
-CSF3 --> FAC1
+FAC4 --> SPC1
 APR2 --> BKG1
 APR3 --> USR1
 SES2 --> BKG1

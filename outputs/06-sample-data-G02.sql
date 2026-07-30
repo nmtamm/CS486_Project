@@ -4,6 +4,12 @@
 -- DBMS:  Microsoft SQL Server
 -- Execute after: 05-db-definition-G02.sql
 -- ============================================================================
+--
+-- IMPORTANT: TRG-02 requires every INSERT into SpaceBooking to use
+-- status = 'pending'.  Bookings that need other statuses are transitioned
+-- via UPDATE statements at the end of this file, following the valid flow:
+--   pending -> approved/rejected/cancelled -> checked_in -> completed/no-show
+-- ============================================================================
 
 USE SpaceBookingDB;
 GO
@@ -13,11 +19,8 @@ GO
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
--- 1. CAMPUS USER
---    Roles: facility_manager(1), facility_staff(2), lecturer(1),
---           student(2), teaching_assistant(1), department_admin(1)
---    account_status: active(7), inactive(1)
--- ----------------------------------------------------------------------------
+-- 1. CAMPUS USER (8 rows)
+-- ============================================================================
 SET IDENTITY_INSERT CampusUser ON;
 GO
 
@@ -39,11 +42,7 @@ GO
 
 -- ----------------------------------------------------------------------------
 -- 2. CAMPUS SPACE (8 rows)
---    Types: auditorium(1), classroom(3), computer_lab(2), meeting_room(1),
---           temporarily_closed(1)
---    current_status: available(4), under_maintenance(1), in_use(1),
---                    temporarily_closed(1), retired(1)
--- ----------------------------------------------------------------------------
+-- ============================================================================
 INSERT INTO CampusSpace (campus_space_code, space_name, space_type, building, floor, room_number, capacity, current_status, usage_policy)
 VALUES
     ('A101', N'Main Auditorium',     'auditorium',          N'Building A', 1, '101', 200, 'available',           N'Lectures, seminars, and academic events.'),
@@ -59,7 +58,7 @@ GO
 
 -- ----------------------------------------------------------------------------
 -- 3. CAMPUS FACILITY (6 rows)
--- ----------------------------------------------------------------------------
+-- ============================================================================
 SET IDENTITY_INSERT CampusFacility ON;
 GO
 
@@ -78,57 +77,28 @@ GO
 
 
 -- ============================================================================
--- Dependent Tables (have FK references)
+-- Dependent Tables (FK references)
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
--- 4. CAMPUS SPACE FACILITY (12 rows)
--- ----------------------------------------------------------------------------
-SET IDENTITY_INSERT CampusSpaceFacility ON;
-GO
-
-INSERT INTO CampusSpaceFacility (campus_space_facility_id, campus_space_code, campus_facility_id, quantity)
-VALUES
-    (1,  'A101', 1, 2),
-    (2,  'A101', 2, 1),
-    (3,  'A101', 3, 2),
-    (4,  'A101', 5, 4),
-    (5,  'A101', 6, 1),
-    (6,  'B201', 1, 1),
-    (7,  'B201', 2, 1),
-    (8,  'B201', 5, 2),
-    (9,  'C301', 1, 1),
-    (10, 'C301', 2, 1),
-    (11, 'C301', 4, 41),
-    (12, 'C301', 5, 2);
-GO
-
-SET IDENTITY_INSERT CampusSpaceFacility OFF;
-GO
-
-
--- ----------------------------------------------------------------------------
--- 5. SPACE BOOKING (8 rows)
---    purpose_type: lecture(2), meeting(1), workshop(1), examination(1),
---                  administrative_event(1), student_activity(1), seminar(1)
---    status: completed(1), approved(1), checked_in(1), pending(2),
---            rejected(1), cancelled(1), no-show(1)
--- ----------------------------------------------------------------------------
+-- 4. SPACE BOOKING (10 rows, ALL with status = 'pending' per TRG-02)
+--     Later UPDATEs (see §7) will transition them to non-pending states.
+-- ============================================================================
 SET IDENTITY_INSERT SpaceBooking ON;
 GO
 
 INSERT INTO SpaceBooking (space_booking_id, requester_id, campus_space_code, requested_start_time, requested_end_time, purpose_type, expected_participants, status, submitted_at)
 VALUES
-    (1, 4, 'A101', '2026-06-20 07:00:00', '2026-06-20 09:00:00', 'lecture',             150, 'completed',          '2026-06-15 08:00:00'),
-    (2, 5, 'D401', '2026-07-02 14:00:00', '2026-07-02 16:00:00', 'meeting',              15, 'approved',           '2026-06-23 11:00:00'),
-    (3, 4, 'C301', '2026-06-25 08:00:00', '2026-06-25 12:00:00', 'workshop',             35, 'checked_in',         '2026-06-18 09:00:00'),
-    (4, 5, 'B201', '2026-07-05 09:00:00', '2026-07-05 11:00:00', 'examination',          55, 'pending',            '2026-06-27 14:00:00'),
-    (5, 5, 'A101', '2026-06-22 10:00:00', '2026-06-22 12:00:00', 'administrative_event', 180, 'rejected',           '2026-06-17 08:00:00'),
-    (6, 5, 'D401', '2026-06-26 08:00:00', '2026-06-26 10:00:00', 'student_activity',     10, 'cancelled',          '2026-06-19 10:00:00'),
-    (7, 4, 'B201', '2026-06-23 07:00:00', '2026-06-23 09:00:00', 'seminar',              45, 'no-show',            '2026-06-18 07:00:00'),
-    (8, 5, 'E501', '2026-07-10 08:00:00', '2026-07-10 10:00:00', 'lecture',              30, 'pending',            '2026-06-28 08:00:00'),
-    (9, 5, 'B201', '2026-07-15 08:00:00', '2026-07-15 10:00:00', 'meeting',              20, 'approved',           '2026-07-01 09:00:00'),
-    (10, 4, 'D401','2026-07-20 13:00:00', '2026-07-20 15:00:00', 'seminar',              35, 'pending',            '2026-07-05 08:00:00');
+    (1,  4, 'A101', '2026-06-20 07:00:00', '2026-06-20 09:00:00', 'lecture',              150, 'pending', '2026-06-15 08:00:00'),
+    (2,  5, 'D401', '2026-07-02 14:00:00', '2026-07-02 16:00:00', 'meeting',               15, 'pending', '2026-06-23 11:00:00'),
+    (3,  4, 'C301', '2026-06-25 08:00:00', '2026-06-25 12:00:00', 'workshop',              35, 'pending', '2026-06-18 09:00:00'),
+    (4,  5, 'B201', '2026-07-05 09:00:00', '2026-07-05 11:00:00', 'examination',           55, 'pending', '2026-06-27 14:00:00'),
+    (5,  5, 'A101', '2026-06-22 10:00:00', '2026-06-22 12:00:00', 'administrative_event', 180, 'pending', '2026-06-17 08:00:00'),
+    (6,  5, 'D401', '2026-06-26 08:00:00', '2026-06-26 10:00:00', 'student_activity',      10, 'pending', '2026-06-19 10:00:00'),
+    (7,  4, 'B201', '2026-06-23 07:00:00', '2026-06-23 09:00:00', 'seminar',               45, 'pending', '2026-06-18 07:00:00'),
+    (8,  5, 'E501', '2026-07-10 08:00:00', '2026-07-10 10:00:00', 'lecture',               30, 'pending', '2026-06-28 08:00:00'),
+    (9,  5, 'B201', '2026-07-15 10:00:00', '2026-07-15 12:00:00', 'meeting',               20, 'pending', '2026-07-01 09:00:00'),
+    (10, 4, 'D401', '2026-07-20 13:00:00', '2026-07-20 15:00:00', 'seminar',               15, 'pending', '2026-07-05 08:00:00');
 GO
 
 SET IDENTITY_INSERT SpaceBooking OFF;
@@ -136,9 +106,8 @@ GO
 
 
 -- ----------------------------------------------------------------------------
--- 6. BOOKING APPROVAL (5 rows)
---    decision: approved(4), rejected(1 with rejection_reason)
--- ----------------------------------------------------------------------------
+-- 5. BOOKING APPROVAL (6 rows)
+-- ============================================================================
 SET IDENTITY_INSERT BookingApproval ON;
 GO
 
@@ -157,8 +126,8 @@ GO
 
 
 -- ----------------------------------------------------------------------------
--- 7. SPACE USAGE SESSION (4 rows)
--- ----------------------------------------------------------------------------
+-- 6. SPACE USAGE SESSION (4 rows)
+-- ============================================================================
 SET IDENTITY_INSERT SpaceUsageSession ON;
 GO
 
@@ -167,7 +136,7 @@ VALUES
     (1, 1, 2, '2026-06-20 07:05:00', N'Clean and tidy. All equipment working.', '2026-06-20 09:10:00', N'Good condition.', N'Lecture completed on time.'),
     (2, 3, 2, '2026-06-25 08:00:00', N'All computers working. Room clean.',     NULL,                  NULL,              NULL),
     (3, 7, 2, '2026-06-23 07:00:00', N'No user arrived at start time.',         '2026-06-23 07:30:00', N'N/A',            N'User did not show up.'),
-    (4, 2, 3, '2026-06-26 15:00:00', N'Room tidy.',                             NULL,                  NULL,              NULL);
+    (4, 2, 3, '2026-07-02 14:05:00', N'Room tidy.',                             NULL,                  NULL,              NULL);
 GO
 
 SET IDENTITY_INSERT SpaceUsageSession OFF;
@@ -175,11 +144,8 @@ GO
 
 
 -- ----------------------------------------------------------------------------
--- 8. SPACE MAINTENANCE (6 rows)
---    problem_type: ac_failure(1), broken_projector(1), network(1), cleaning(1),
---                  damaged_furniture(1), other(1)
---    status: in_progress(1), completed(2), reported(2), cancelled(1)
--- ----------------------------------------------------------------------------
+-- 7. SPACE MAINTENANCE (6 rows)
+-- ============================================================================
 SET IDENTITY_INSERT SpaceMaintenance ON;
 GO
 
@@ -194,4 +160,53 @@ VALUES
 GO
 
 SET IDENTITY_INSERT SpaceMaintenance OFF;
+GO
+
+
+-- ============================================================================
+-- 8. STATUS TRANSITIONS (via UPDATE per TRG-02 rules)
+-- ============================================================================
+-- TRG-02 valid flow: pending -> approved/rejected/cancelled
+--                     approved -> checked_in
+--                     checked_in -> completed/no-show
+-- ============================================================================
+
+-- Booking 1 (A101, 07:00-09:00, 150p): pending -> approved -> checked_in -> completed
+UPDATE SpaceBooking SET status = 'approved'   WHERE space_booking_id = 1;
+GO
+UPDATE SpaceBooking SET status = 'checked_in' WHERE space_booking_id = 1;
+GO
+UPDATE SpaceBooking SET status = 'completed'  WHERE space_booking_id = 1;
+GO
+
+-- Booking 2 (D401, 14:00-16:00, 15p): pending -> approved -> checked_in
+UPDATE SpaceBooking SET status = 'approved'   WHERE space_booking_id = 2;
+GO
+UPDATE SpaceBooking SET status = 'checked_in' WHERE space_booking_id = 2;
+GO
+
+-- Booking 3 (C301, 08:00-12:00, 35p): pending -> approved -> checked_in
+UPDATE SpaceBooking SET status = 'approved'   WHERE space_booking_id = 3;
+GO
+UPDATE SpaceBooking SET status = 'checked_in' WHERE space_booking_id = 3;
+GO
+
+-- Booking 5 (A101, 10:00-12:00, 180p): pending -> rejected
+UPDATE SpaceBooking SET status = 'rejected' WHERE space_booking_id = 5;
+GO
+
+-- Booking 6 (D401, 08:00-10:00, 10p): pending -> cancelled
+UPDATE SpaceBooking SET status = 'cancelled' WHERE space_booking_id = 6;
+GO
+
+-- Booking 7 (B201, 07:00-09:00, 45p): pending -> approved -> checked_in -> no-show
+UPDATE SpaceBooking SET status = 'approved'   WHERE space_booking_id = 7;
+GO
+UPDATE SpaceBooking SET status = 'checked_in' WHERE space_booking_id = 7;
+GO
+UPDATE SpaceBooking SET status = 'no-show'    WHERE space_booking_id = 7;
+GO
+
+-- Booking 9 (B201, 10:00-12:00, 20p): pending -> approved
+UPDATE SpaceBooking SET status = 'approved' WHERE space_booking_id = 9;
 GO
