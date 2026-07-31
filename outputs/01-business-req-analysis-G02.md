@@ -167,31 +167,3 @@ The School of Computer Science manages shared physical spaces (auditoriums, clas
 | BR8 | A booking's start time must be before its end time. |
 | BR9 | Maintenance status "in_progress" should prevent new bookings for the space. |
 | BR10 | Historical records must be preserved (no hard deletes of completed bookings or maintenance). |
-
----
-
-## 7. Assumptions
-
-| # | Assumption |
-|---|---|
-| A1 | Each campus user has exactly one role. If a person has multiple roles, they are represented by separate accounts. |
-| A2 | Phone number is optional for users. |
-| A3 | A space booking always goes through at most one approval (no multi-level approval chain). |
-| A4 | Check-in and check-out are always performed by facility staff, not by the requester. |
-| A5 | A space can be used without a prior booking for walk-in usage, but the system requires at least a booking record. |
-| A6 | Maintenance records can exist without a linked booking. |
-| A7 | Each campus facility represents a unique physical asset assigned to exactly one campus space. Facility types (e.g., projector, computer, whiteboard) are predefined and managed through a lookup table or enumeration. |
-
----
-
-## 8. Open Questions
-
-| # | Question |
-|---|---|
-| Q1 | Should a single campus user be allowed to have multiple roles (e.g., both student and teaching assistant)? |
-| Q2 | Should there be a notification system for booking approval/rejection? |
-| Q3 | How are recurring bookings handled (e.g., weekly lectures for a full semester)? |
-| Q4 | Is there a maximum booking duration or advance booking window? |
-| Q5 | Should the system support waitlisting when a space is unavailable? |
-| Q6 | Should there be different approval workflows based on space type or requester role? |
-| Q7 | Are there charges/fees associated with booking certain spaces? |

@@ -1,19 +1,34 @@
 | No | Task | Assigned to | Deadline | Notes |
 |---|---|---|---|---|
 | 1 | Business Requirement Analysis | Kiệt | 23h59 7/6/2026 | Push markdown file to Github |
-| 2 | Task 1 Review | All | 23h59 8/6/2026 | All members have to leave some comment (use Issues Tab in Github), even though you are satisfied with the results |
+| 2 | Task 1 Review | All | 23h59 8/6/2026 | All members have to leave some comment, even though you are satisfied with the results |
 | 3 | Conceptual Database Design | Anh Dâng | 23h59 11/6/2026 | Push markdown file to Github |
-| 4 | Task 3 Review | All | 23h59 12/6/2026 | All members have to leave some comment (use Issues Tab in Github), even though you are satisfied with the results |
+| 4 | Task 3 Review | All | 23h59 12/6/2026 | All members have to leave some comment, even though you are satisfied with the results |
 | 5 | Logical Database Design | Hậu | 23h59 15/6/2026 | Push markdown file to Github |
-| 6 | Task 5 Review | All | 23h59 16/6/2026 | All members have to leave some comment (use Issues Tab in Github), even though you are satisfied with the results |
+| 6 | Task 5 Review | All | 23h59 16/6/2026 | All members have to leave some comment, even though you are satisfied with the results |
 | 7 | Database Design Validation | Tâm | 23h59 18/6/2026 | Push markdown file to Github |
 | 8 | Database Implementation | Anh Dâng + Tâm | 23h59 20/6/2026 | Push markdown file to Github |
-| 9 | Task 8 Review | All | 23h59 21/6/2026 | All members have to leave some comment (use Issues Tab in Github), even though you are satisfied with the results |
+| 9 | Task 8 Review | All | 23h59 21/6/2026 | All members have to leave some comment, even though you are satisfied with the results |
 | 10 | Sample Data Preparation | Kiệt + Hậu | 23h59 23/6/2026 | Push markdown file to Github |
-| 11 | Task 10 Review | All | 23h59 24/6/2026 | All members have to leave some comment (use Issues Tab in Github), even though you are satisfied with the results |
+| 11 | Task 10 Review | All | 23h59 24/6/2026 | All members have to leave some comment, even though you are satisfied with the results |
 | 12 | Query Design | All | 23h59 27/6/2026 | Each query must include: ```Business question```, ```Target user(s) that would use the query```, ```Short explanation of why the query is useful```, ```SQL statement```. Inserting all requirements for each query to this [file](https://docs.google.com/spreadsheets/d/1o-mq4OIFtubjrSkgKc0G2Eod4VeHaRLULizCoO4g3xs/edit?usp=sharing) to prevent duplicates  | 
-| 13 | Task 12 Review | All | 23h59 28/6/2026 | All members have to leave some comment (use Issues Tab in Github), even though you are satisfied with the results |
+| 13 | Task 12 Review | All | 23h59 28/6/2026 | All members have to leave some comment, even though you are satisfied with the results |
 | 14 | Finish project report | All | | |
+| 15 | Requirement Change Analysis | Tâm + Hậu | 30/7/2026 | Push markdown file to Github |
+| 16 | Design Update | Tâm + Hậu | 31/7/2026 | Push markdown file to Github |
+| 17 | Schema Migration | Tâm + Hậu | 1/8/2026 | Push markdown file to Github |
+| 18 | Task 15, 16, 17 Review | All | 1/8/2026 | All members have to leave some comment, even though you are satisfied with the results |
+| 19 | Concurrency Design and Implementation | Anh Dâng + Kiệt | 3/8/2026 | Push markdown file to Github | 
+| 20 | Concurrency Test | Anh Dâng + Kiệt | 4/8/2026 | Push markdown file to Github |
+| 21 | Task 19, 20 Review | All | 4/8/2026 | All members have to leave some comment, even though you are satisfied with the results |
+| 22 | Sample Data Generation | | 5/8/2026 | | Push markdown file to Github |
+| 23 | Task 22 Review | | 5/8/2026 | All members have to leave some comment, even though you are satisfied with the results |
+| 24 | Analytical Queries | | 6/8/2026 | Push markdown file to Github|
+| 25 | Task 24 Review | | 6/8/2026 | All members have to leave some comment, even though you are satisfied with the results |
+| 26 | Indexing and Query Tuning | | 7/8/2026 | Push markdown file to Github |
+| 27 | Task 26 Review | | 7/8/2026 | All members have to leave some comment, even though you are satisfied with the results |
+| 28 | Normalization Validation | | 8/8/2026
+
 
 # Database Design Agent Project
 

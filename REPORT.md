@@ -393,3 +393,23 @@ The following business rules are defined in the business requirements but are no
 ## SQL Functions Explanation
 - **`CAST` (in Query 1):** The `expected_participants` column is stored as an integer. In SQL Server, taking the average (`AVG`) of integers performs integer division and discards decimal values (e.g., averaging `1` and `2` returns `1`). Casting it to `DECIMAL` preserves the decimal points in the result.
 - **`LOWER` (in Query 5):** Converts the facility names to lowercase before checking. This makes the search case-insensitive, ensuring that "Projector", "projector", and "PROJECTOR" are all matched correctly.
+
+---
+
+# Student Work Report
+
+**Name:** Nguyễn Minh Tâm
+
+**Student ID:** 24125042
+
+**Task:** Step 8 — Requirement Change Analysis
+
+# Task have been done
+1. **Internal deep scan** — Analyzed the new requirement (maintenance impact levels, concurrent booking/approval, new reporting needs) against the existing 7 output artifacts.
+2. **Interactive clarification** — Resolved 4 ambiguities via the `question` tool: instant booking space types (classroom & auditorium), advisory acknowledgement storage (boolean on SpaceBooking), impact level history (current level only), escalation handling (identify & report only).
+3. **Final compilation** — Produced the 5-section document covering Business Purpose (modified), Business Data Entities (SpaceMaintenance + impact_level, SpaceBooking + advisory_acknowledged + is_instant_booking), Relationships (refined R2, R8), Business Rules (BR-02/BR-09 modified; BR-11 through BR-14 new), and Conflicts (3 concurrency conflicts with mitigations).
+
+## Model Usage
+
+**Big Pickle (from the default provider):** Used as the primary model.
+

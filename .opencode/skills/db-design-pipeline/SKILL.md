@@ -28,6 +28,7 @@ Create or update the following files:
 4. `outputs/04-design-validation-G02.md`
 5. `outputs/05-db-definition-G02.sql`
 6. `outputs/06-sample-data-G02.sql`
+7. `outputs/08-requirement-change-analysis-G02.md`
 Do not skip any Markdown file.
 
 ---
