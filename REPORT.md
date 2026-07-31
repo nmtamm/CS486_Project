@@ -413,3 +413,45 @@ The following business rules are defined in the business requirements but are no
 
 **Big Pickle (from the default provider):** Used as the primary model.
 
+---
+
+# Student Work Report
+
+**Name:** Trần Trung Hậu
+
+**Student ID:** 24125055
+
+**Task:** Step 9 — Updated ERD and Logical Database Design
+
+# Task have been done
+
+1. **Internal deep scan** 
+
+    - Reviewed all Phase 1 artifacts (Steps 01–08)
+    - Identified the existing ERD and relational schema
+    - Analyzed the design changes required to support maintenance impact levels, advisory acknowledgements, concurrent booking, and the new reporting requirements
+
+2. **Design update** 
+
+    Updated the conceptual ERD and logical relational schema by extending: 
+    - the maintenance and booking models, 
+    - refining entities, 
+    - attributes, 
+    - relationships, 
+    - keys, and 
+    - constraints 
+
+    while maintaining consistency with the original Phase 1 database design and preserving backward compatibility where appropriate.
+
+3. **Design validation** 
+
+    Verified that the updated design satisfies:
+    - the revised business rules
+    - supports advisory acknowledgement tracking
+    - enables identification of bookings affected by maintenance escalation
+    - preserves the booking conflict rule under concurrent operations
+    - provides sufficient data structures for all required analytical reports
+
+## Model Usage
+
+**Big Pickle (from the default provider):** Used as the primary model.
