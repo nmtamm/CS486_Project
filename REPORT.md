@@ -455,3 +455,29 @@ The following business rules are defined in the business requirements but are no
 ## Model Usage
 
 **Big Pickle (from the default provider):** Used as the primary model.
+
+---
+
+# Student Work Report
+
+**Name:** Nguyễn Minh Tâm
+
+**Student ID:** 24125042
+
+**Task:** Step 10 - Schema migration
+
+# Task have been done
+
+1. **Analyzed old vs. new schema** — produced a per-table and per-column mapping (keep / rename / modify / new) between the 7 Phase 1 tables and the 10 Phase 2 tables.
+2. **Created the migration SQL** (`outputs/10-schema-migration-G02.sql`):
+   - New database `SpaceBookingDB_Phase2` (Phase 1 `SpaceBookingDB` is only read, never modified)
+   - New schema with all 10 tables, PK/FK/UNIQUE/CHECK constraints, and 3 triggers (BR-03 status transitions, BR-07 capacity, refined maintenance status)
+   - Data migration preserving all IDs and relationships (8 users, 8 spaces, 6 facilities, 10 bookings, 6 approvals, 4 sessions, 6 maintenance records)
+   - Data transformations: `facility_name → facility_type`, `is_instant_booking = 0`, `impact_level = 'out_of_service'`, `broken_projector → other`
+   - Default value insertion: seeded `SpaceTypeBookingPolicy` (4 types) and `Semester` (9 rows), new mandatory attributes defaulted
+   - Post-migration integrity validation queries (row counts, orphan FK, duplicate key checks)
+3. **Documented the analytical process** (`outputs/10-schema-migration-G02.md`) covering the migration strategy, transformations, execution order, integrity validation, and assumptions (cross-referenced to `09` section numbers).
+
+## Model Usage
+
+**Big Pickle (from the default provider):** Used as the primary model.
