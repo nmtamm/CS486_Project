@@ -13,7 +13,7 @@ outputs/09-updated-erd-and-logical-design-G02.md
 The artifact must update the Phase 1 conceptual ERD and relational schema so that the database design supports:
 
 1. maintenance impact levels;
-2. advisory notification and acknowledgement records;
+2. advisory notification support through FacilityMaintenance notification status;
 3. instant and staff-approved booking paths;
 4. prevention of conflicting approved bookings under concurrent operations; and
 5. the new reporting needs, especially identifying bookings affected by maintenance escalation.
@@ -91,7 +91,7 @@ Before writing the output, determine the minimum correct changes to the Phase 1 
 The updated design must distinguish at least:
 
 - `out_of_service`: overlapping booking or approval is prohibited;
-- `advisory`: the space remains bookable, but the requester must be informed and acknowledgement must be recorded.
+- `advisory`: the space remains bookable, but the requester must be informed. Notification processing is represented through FacilityMaintenance.notify_status and implemented later by trigger, stored procedure, or application logic.
 
 The design must support:
 
@@ -103,27 +103,22 @@ The design must support:
 
 Review whether the existing `SpaceMaintenance.start_time`, `completion_time`, and `status` are sufficient to represent an open maintenance interval. State how an open-ended interval is interpreted when `completion_time` is null.
 
-### 4.2. Advisory acknowledgements
+### 4.2. Advisory notification
 
-Do not model acknowledgement only as an undifferentiated Boolean on `SpaceBooking` when multiple active advisories may exist.
+The updated design shall support advisory maintenance without introducing a separate acknowledgement relation.
 
-The design must preserve which advisory maintenance records were disclosed for which booking. Prefer a normalized associative entity/relation such as:
+Model advisory notification through the `FacilityMaintenance.notify_status` attribute.
 
-```text
-BookingAdvisoryAcknowledgement
-```
+The design must support:
 
-or an equally traceable design.
+- advisory maintenance records associated with one campus facility;
+- notification processing when a booking involves a space containing facilities with active advisory maintenance;
+- identifying whether notification processing is required or has been performed;
+- trigger, stored procedure, or application logic to process notifications.
 
-At minimum, the acknowledgement design must identify:
+Explain that notification status represents processing of advisory notifications rather than a historical acknowledgement relation.
 
-- the booking;
-- the advisory maintenance record;
-- when acknowledgement occurred;
-- the acknowledging requester, if not safely derivable from the booking;
-- any necessary uniqueness rule preventing duplicate acknowledgement of the same advisory for the same booking.
-
-Explain whether acknowledgements are a snapshot of advisories active at submission time. Historical acknowledgements must remain valid even if the maintenance record is later completed, escalated, downgraded, or edited.
+Historical maintenance records remain valid after completion, escalation, downgrade, or other updates.
 
 ### 4.3. Instant booking and staff approval
 
@@ -240,7 +235,7 @@ For every changed or new entity, describe:
 - added/modified attributes;
 - why the entity or attribute is required;
 - participation and cardinality;
-- historical/audit behaviour.
+- historical/audit behaviour, including notification behaviour where applicable.
 
 #### 3.3. Relationship Summary
 
@@ -363,8 +358,8 @@ Provide explicit pass/fail checks for:
 
 - all Phase 1 entities preserved unless justified;
 - all new requirements represented;
-- multiple simultaneous advisories supported;
-- per-advisory acknowledgement traceability supported;
+- multiple simultaneous maintenance records supported;
+- advisory notification design supported through FacilityMaintenance.notify_status;
 - maintenance escalation and affected-booking discovery supported;
 - automatic and staff approval distinguishable and auditable;
 - overlap invariant defined for both approval paths;
@@ -394,8 +389,8 @@ Do not conceal uncertainty by inventing values.
 3. Use `campus_space_code` consistently as `NVARCHAR`, correcting any accidental `INT` declaration in earlier diagrams.
 4. Do not make `facility_type` globally unique if the implementation allows the same facility type in different spaces. Validate the actual Phase 1 DDL and preserve its real key semantics.
 5. Do not rely only on `CampusSpace.current_status` to determine temporal maintenance availability. Booking conflict with maintenance must be based on active maintenance records and overlapping periods; `current_status` may remain a convenience/current-state attribute.
-6. An advisory acknowledgement must be tied to the specific advisory or advisories disclosed, not merely to the existence of some advisory.
-7. Historical acknowledgement records must not disappear when maintenance status changes.
+6. Advisory notification shall be represented through FacilityMaintenance.notify_status. Notification processing is implemented later by trigger, stored procedure, or application logic.
+7. Notification processing must remain consistent when maintenance status changes or is escalated.
 8. Do not assume escalation automatically cancels bookings. The requirement asks the system to identify affected approved bookings so staff can contact requesters.
 9. Avoid storing report results as base data unless explicitly justified.
 10. Do not include executable migration SQL in the Markdown artifact.
@@ -418,7 +413,7 @@ Follow this sequence strictly.
 
 - Determine changed/new conceptual entities and relationships.
 - Determine changed/new logical relations, attributes, and constraints.
-- Resolve acknowledgement multiplicity.
+- Resolve advisory notification processing using FacilityMaintenance.notify_status.
 - Resolve approval-path audit modelling.
 - Define the overlap invariant and temporal rules.
 - Confirm support for all four reports.

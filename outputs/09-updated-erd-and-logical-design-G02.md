@@ -48,27 +48,23 @@ This artifact is a **design artifact**: it defines what the data model must cont
 | Design Item | Change Type | Phase 1 Design | Updated Design | Requirement Rationale |
 |---|---|---|---|---|
 | `SpaceMaintenance.impact_level` | New attribute | No impact concept; any maintenance blocks booking | `NVARCHAR(20) NOT NULL DEFAULT 'out_of_service'`, `CHECK (impact_level IN ('out_of_service','advisory'))` | Phase 2 §1.1 / `new_requirement.md` — two impact levels with different booking behaviour |
-| `SpaceMaintenance` open maintenance interval | New constraints | `completion_time` nullable, no interval rule | Interval = `[start_time, completion_time)`; `completion_time IS NULL` means open-ended `[start_time, ∞)`; `CHECK (completion_time IS NULL OR completion_time > start_time)`; `CHECK (status = 'completed' ⇒ completion_time IS NOT NULL)` | Phase 2 §1.1 — temporal overlap between maintenance and booking periods must be well defined, including open-ended maintenance |
-| `SpaceMaintenance.impact_level` mutability | Behaviour change | Impact not modelled | `impact_level` may be escalated (advisory → out_of_service) or downgraded while the maintenance record is still open; change is a normal `UPDATE` performed in the maintenance-management transaction | Phase 2 §1.1 — escalation/downgrade while maintenance remains open |
-| `BookingAdvisoryAcknowledgement` | New entity (correction of Step 08) | Step 08 proposed `SpaceBooking.advisory_acknowledged BIT` | Normalized associative entity: composite PK `(space_booking_id, space_maintenance_id)` + `acknowledged_at`; one row per advisory disclosed for a booking | Phase 2 §1.1 — acknowledgement must be tied to the specific advisories disclosed, not to an undifferentiated Boolean (instruction §4.2) |
-| `BookingApproval.approval_type` | New attribute (correction of Step 08) | Step 08 proposed `SpaceBooking.is_instant_booking BIT`; single staff approval workflow | `NVARCHAR(20) NOT NULL CHECK (approval_type IN ('automatic','staff'))`; the approval record is the single source of truth for how a booking was approved | Phase 2 §1.2 — automatic vs staff approval must be distinguishable and auditable (instruction §4.3) |
-| `BookingApproval.staff_id` | Modified | `NOT NULL` | `NULL` allowed; `NOT NULL` when `approval_type='staff'`, `NULL` when `approval_type='automatic'` | Phase 2 §1.2 — automatic approval has no staff member; absence of staff must not violate referential integrity |
+| `SpaceMaintenance.problem_type` | Preserved | | Remains a problem category such as electrical, air-conditioning, furniture, cleaning, network, or other | A problem category is different from the facility affected |
 | `SpaceTypeBookingPolicy` | New entity (correction of Step 08) | Step 08 assumed instant eligibility for "classrooms and auditoriums" | Configuration relation keyed by `space_type` with `instant_booking_eligible BIT`; eligibility is data, not hard-coded | Phase 2 §1.2 — "selected space types" are not identified in any authoritative project file; eligibility must be modelled generically (instruction §3) |
 | `CampusSpace.space_type` | Modified | Plain domain attribute | `FK → SpaceTypeBookingPolicy.space_type`; every space's type must have a policy row | Traceable generic eligibility; config completeness for instant booking |
 | `Semester` | New entity | No semester concept | `semester_id PK`, `academic_year`, `semester_no`, `semester_name`, `start_date`, `end_date`, `UK (academic_year, semester_no)` | Phase 2 §1.3 — reports 1 and 2 are defined "for a given semester" |
+| `FacilityMaintenance` | New relation | No FacilityMaintenance concept | Stores maintenance concerning one `CampusFacility`, including impact, interval, workflow status, and acknowledgement status | Supports facility-specific advisories and the selected acknowledgement design |
+| `SpaceBooking.is_instant_booking` | New attribute | No instant booking concept | `BIT NOT NULL DEFAULT 0` | Identifies bookings approved automatically at submission |
 | BR-01 / BR-12 overlap invariant | Modified + New | Phase 1 trigger checked only `status='approved'` | Invariant covers the approved lifecycle (`approved`, `checked_in`, `completed`, `no-show`) and must hold under concurrent operations for both approval paths; enforced transactionally | Phase 2 §1.2 — no two approved bookings may overlap, regardless of path or concurrency |
 | BR-02 / BR-09 | Modified | Any maintenance blocks booking | Only active maintenance with `impact_level='out_of_service'` whose interval overlaps the requested period blocks booking; advisory maintenance never blocks | Phase 2 §1.1 — impact levels |
 | BR-11 / BR-13 / BR-14 | New | Not present | Instant booking policy; per-advisory acknowledgement; escalation-affected-booking identification | Phase 2 §1.1, §1.2 |
-| `CampusFacility.facility_name` | Consistency correction | Earlier diagrams used `facility_type` with a `UK` marker; implemented DDL uses `facility_name NVARCHAR(100)` with `UNIQUE` | Keep `facility_name` with `UNIQUE` exactly as implemented | Instruction §6.4 — preserve the real key semantics of the Phase 1 DDL; do not re-introduce a global-unique `facility_type` |
 | `campus_space_code` data type | Consistency correction | Phase 1 ERD (doc 02) declared `int campus_space_code` on `CampusFacility` | `NVARCHAR(20)` in every diagram and definition | Instruction §6.3 — `campus_space_code` must be `NVARCHAR` consistently |
 | Crow's-foot optionality of R3, R5, R10 | Consistency correction | Phase 1 ERD drew `||` on the parent side although the FK columns are nullable in the DDL | Accurate optionality: `|o` where the FK is nullable | Instruction §3.1 — accurate Crow's Foot cardinalities and optionality must match the FKs |
 
 **Corrections and refinements made to Step 08** (`outputs/08-requirement-change-analysis-G02.md`):
 
-1. **Step 08 §2 (SpaceBooking):** proposed `advisory_acknowledged BIT` and `is_instant_booking BIT` on `SpaceBooking`. **Corrected:** the acknowledgement is moved to the associative entity `BookingAdvisoryAcknowledgement` (a single Boolean cannot preserve which advisories were disclosed when several active advisories exist — instruction §4.2). The instant-booking marker is moved to `BookingApproval.approval_type` (a column on `SpaceBooking` would be a second, contradictable source of truth — instruction §4.3).
-2. **Step 08 §4 (BR-11):** assumed instant eligibility for "classrooms and auditoriums". **Corrected:** no authoritative Phase 2 file identifies the selected space types; eligibility is now generic configuration data in `SpaceTypeBookingPolicy` (instruction §3).
-3. **Step 08 §3 (Relationships):** stated "No new relationships between entities are introduced." **Corrected:** new relationships R11 (booking ↔ acknowledgement), R12 (maintenance ↔ acknowledgement), and R13 (space-type policy ↔ space) are required to support the associative acknowledgement and the generic eligibility design.
-4. **Step 08 §4 (BR-13):** tied acknowledgement to a booking-level flag. **Corrected:** acknowledgement is a set of per-advisory records captured as a snapshot at submission time (instruction §4.2).
+1. **Step 08 §4 (BR-11):** assumed instant eligibility for "classrooms and auditoriums". **Corrected:** no authoritative Phase 2 file identifies the selected space types; eligibility is now generic configuration data in `SpaceTypeBookingPolicy` (instruction §3).
+2. **Step 08 §3 (Relationships):** stated "No new relationships between entities are introduced." **Corrected:** R13 (space-type policy ↔ space) are required to support the generic eligibility design.
+
 
 ---
 
@@ -102,7 +98,7 @@ erDiagram
 
     CampusFacility {
         int campus_facility_id PK
-        nvarchar facility_name UK
+        nvarchar facility_type UK
         nvarchar description
         nvarchar campus_space_code FK "nullable"
         nvarchar status "Values: available; in_use; under_maintenance"
@@ -117,14 +113,14 @@ erDiagram
         nvarchar purpose_type "Values: lecture; examination; seminar; workshop; meeting; student_activity; administrative_event"
         int expected_participants
         nvarchar status "Values: pending; approved; rejected; cancelled; checked_in; completed; no-show"
+        bit is_instant_booking "Values: 0 staff workflow; 1 automatic approval; Default: 0"
         datetime submitted_at
     }
 
     BookingApproval {
         int booking_approval_id PK
         int space_booking_id FK "UK: 1 booking per approval"
-        int staff_id FK "NULL when approval_type = automatic"
-        nvarchar approval_type "Values: automatic; staff"
+        int staff_id FK 
         nvarchar decision "Values: approved; rejected"
         datetime decision_time
         nvarchar decision_note
@@ -147,19 +143,27 @@ erDiagram
         nvarchar campus_space_code FK
         int reporter_id FK
         int assigned_staff_id FK "nullable"
-        nvarchar impact_level "Values: out_of_service; advisory"
+        nvarchar impact_level "Values: out_of_service; advisory; Default: out_of_service"
         nvarchar problem_description
-        nvarchar problem_type "Values: broken_projector; ac_failure; damaged_furniture; cleaning; network; other"
+        nvarchar problem_type "Values: ac_failure; damaged_furniture; cleaning; network; other"
         datetime start_time
         datetime completion_time "NULL = maintenance still open"
         nvarchar status "Values: reported; in_progress; completed; cancelled"
         nvarchar result_note
     }
 
-    BookingAdvisoryAcknowledgement {
-        int space_booking_id PK, FK
-        int space_maintenance_id PK, FK
-        datetime acknowledged_at
+    FacilityMaintenance {
+        int facility_maintenance_id PK
+        int campus_facility_id FK
+        int reporter_id FK
+        int assigned_staff_id FK "NULL allowed"
+        nvarchar impact_level "Values: out_of_service; advisory; Default: advisory"
+        nvarchar problem_description
+        datetime start_time 
+        datetime completion_time "NULL = maintenance still open"
+        nvarchar status "Values: reported; in_progress; completed; cancelled; Default: reported"
+        nvarchar notify_status "Values: nothing_to_notify; updated_to_advisory; updated_to_out_of_service; Default: nothing_to_notify"
+        nvarchar result_note 
     }
 
     SpaceTypeBookingPolicy {
@@ -208,14 +212,17 @@ erDiagram
     %% R10: CampusUser (staff) assigned to SpaceMaintenance (0..1:N)
     CampusUser |o--o{ SpaceMaintenance : "is assigned"
 
-    %% R11: SpaceBooking is disclosed in BookingAdvisoryAcknowledgement (1:N)
-    SpaceBooking ||--o{ BookingAdvisoryAcknowledgement : "discloses"
-
-    %% R12: SpaceMaintenance is disclosed in BookingAdvisoryAcknowledgement (1:N)
-    SpaceMaintenance ||--o{ BookingAdvisoryAcknowledgement : "is disclosed in"
-
-    %% R13: SpaceTypeBookingPolicy applies to CampusSpace (1:N)
+    %% R11: SpaceTypeBookingPolicy applies to CampusSpace (1:N)
     SpaceTypeBookingPolicy ||--o{ CampusSpace : "applies to"
+
+    %% R12: CampusFacility undergoes FacilityMaintenance (1:N)
+    CampusFacility ||--o{ FacilityMaintenance : "undergoes"
+
+    %% R13: CampusUser reports FacilityMaintenance (1:N)
+    CampusUser ||--o{ FacilityMaintenance : "reports"
+
+    %% R14: CampusUser (staff) is assigned to FacilityMaintenance (0..1:N)
+    CampusUser |o--o{ FacilityMaintenance : "is assigned"
 ```
 
 ### 3.2. Entity Change Descriptions
@@ -235,23 +242,6 @@ erDiagram
 - **Participation and cardinality:** a space can have several active maintenance records at the same time with different impact levels — naturally supported because each record is its own row with its own interval and impact level; no cross-row constraint restricts it (Phase 2 §1.1 explicitly allows it). R8 1:N, R9 1:N, R10 0..1:N.
 - **Historical/audit behaviour:** records are never hard-deleted (BR-10). Escalation/downgrade is a normal `UPDATE` of `impact_level` while the record is open; the current value is what drives booking conflicts and the escalation report. A dedicated impact-history relation is not added (see Section 10). Acknowledgement rows referencing this record remain valid after any edit because they reference `space_maintenance_id`, not the impact value.
 
-#### BookingApproval (modified)
-
-- **Purpose:** the single decision record for a booking; now represents both approval paths without losing auditability.
-- **Added attribute:** `approval_type NVARCHAR(20) NOT NULL`, `CHECK (approval_type IN ('automatic','staff'))`.
-  - `automatic`: instant booking — approved at submission time, `staff_id` is `NULL`.
-  - `staff`: the existing staff approval workflow — `staff_id` is required.
-- **Modified attribute:** `staff_id` changed from `NOT NULL` to nullable with the consistency check `CHECK ((approval_type = 'automatic' AND staff_id IS NULL) OR (approval_type = 'staff' AND staff_id IS NOT NULL))`. Referential integrity to `CampusUser` is preserved by keeping the FK; a `NULL` value legally represents "no staff member" without a dummy user.
-- **Unchanged attributes:** `booking_approval_id`, `space_booking_id` (`UNIQUE`, 1:1 with `SpaceBooking`), `decision`, `decision_time` (when approval occurred — for automatic approvals this is the submission-time system timestamp), `decision_note`, `rejection_reason` (BR-04).
-- **Why required:** Phase 2 §1.2 — automatic approval at submission time and staff approval must coexist, and it must be determinable *how*, *when*, and *by whom* a booking was approved. Keeping both paths in `BookingApproval` (instead of a bit on `SpaceBooking`) gives one auditable source of truth and avoids contradictable flags.
-- **Consistency rule (single source of truth):** `SpaceBooking.status` and `BookingApproval.decision` must agree:
-  - `SpaceBooking.status = 'approved'` ⟺ a `BookingApproval` row with `decision='approved'` exists;
-  - `SpaceBooking.status = 'rejected'` ⟺ a `BookingApproval` row with `decision='rejected'` exists;
-  - `SpaceBooking.status = 'pending'` ⟹ no `BookingApproval` row exists yet.
-  - This is a cross-row rule and is enforced by trigger/protected stored procedure (BR-03), not by `CHECK`.
-- **Participation and cardinality:** R4 1:0..1 (unchanged); R5 now 0..1:N because an automatic approval has no staff member.
-- **Historical/audit behaviour:** no hard deletes (BR-10); the decision record persists even after the booking status advances.
-
 #### CampusSpace (modified)
 
 - **Purpose:** unchanged — a bookable physical space.
@@ -260,33 +250,11 @@ erDiagram
 - **Participation and cardinality:** R13 — `SpaceTypeBookingPolicy` 1:N `CampusSpace` (each space has exactly one policy through its type; a policy applies to many spaces).
 - **Historical/audit behaviour:** unchanged; `current_status` remains a convenience current-state attribute and is *not* the source of temporal maintenance availability (instruction §6.5).
 
-#### CampusFacility (unchanged, naming corrected)
+#### SpaceBooking (modified)
 
-- **Purpose and structure:** unchanged from the Phase 1 DDL. The implemented column is `facility_name NVARCHAR(100)` with a `UNIQUE` constraint and nullable `campus_space_code NVARCHAR(20)`. Earlier diagrams labelled this attribute `facility_type` and declared an `INT` campus_space_code; the updated design uses the implemented names and types (`facility_name`, `NVARCHAR(20)` `campus_space_code`) so the diagrams match `05-db-definition-G02.sql`. The Phase 1 key semantics (`UNIQUE (facility_name)`) are preserved.
-- **Participation and cardinality:** R3 1:0..N — a facility may be unassigned to a space (`campus_space_code` nullable).
-
-#### SpaceBooking (unchanged)
-
-- **Purpose and attributes:** unchanged — no new columns are required. Instant booking, acknowledgement, and semester membership are all represented elsewhere (`BookingApproval.approval_type`, `BookingAdvisoryAcknowledgement`, and derived-by-period respectively). `status` participates in the overlap invariant and in the status↔decision consistency rule.
-
-#### SpaceUsageSession (unchanged)
-
-- **Purpose, attributes, keys, participation (R6 1:0..1, R7 1:N):** unchanged from Phase 1.
-
-#### CampusUser (unchanged)
-
-- **Purpose, attributes, keys, relationships (R1, R5, R7, R9, R10):** unchanged from Phase 1.
-
-#### BookingAdvisoryAcknowledgement (new)
-
-- **Purpose:** records, per booking, each advisory maintenance record that was disclosed to and acknowledged by the requester at submission time.
-- **Attributes:** `space_booking_id INT NOT NULL`, `space_maintenance_id INT NOT NULL` — composite primary key; `acknowledged_at DATETIME2 NOT NULL DEFAULT GETDATE()`.
-- **Why required:** Phase 2 §1.1 — the system must notify the requester of *all* active advisories and record the acknowledgement. Multiple active advisories may exist, so acknowledgement must be tied to each specific advisory (instruction §4.2, §6.6).
-- **Uniqueness rule:** the composite PK prevents duplicate acknowledgement of the same advisory for the same booking.
-- **Acknowledging requester:** the acknowledgement is performed by the requester when submitting the booking, so it is safely derivable from `SpaceBooking.requester_id`; no separate `acknowledged_by` column is added (instruction §4.2).
-- **Snapshot semantics:** the rows are a snapshot of the advisories that were active at submission time. They reference `space_maintenance_id`, so they remain valid even if the maintenance record is later completed, escalated, downgraded, or edited (instruction §6.7). Escalation/downgrade never deletes these rows.
-- **Participation and cardinality:** R11 — `SpaceBooking` 1:N `BookingAdvisoryAcknowledgement` (a booking has 0..N acknowledgements, one per disclosed advisory); R12 — `SpaceMaintenance` 1:N `BookingAdvisoryAcknowledgement` (a maintenance record may be acknowledged by many bookings).
-- **Historical/audit behaviour:** rows are never deleted; they form an immutable disclosure-and-acknowledgement record per booking.
+- **Purpose:** unchanged.
+- **Added attribute:** `is_instant_booking BIT NOT NULL DEFAULT 0`.
+- **Reason:** distinguishes automatic and staff approval without changing `BookingApproval`.
 
 #### SpaceTypeBookingPolicy (new)
 
@@ -318,11 +286,13 @@ erDiagram
 | R8 | CampusSpace | undergoes | SpaceMaintenance | 1:N | CampusSpace: optional, SpaceMaintenance: mandatory | Unchanged (behaviour refined) | Impact level decides blocking vs advisory |
 | R9 | CampusUser (reporter) | reports | SpaceMaintenance | 1:N | CampusUser: optional, SpaceMaintenance: mandatory | Unchanged | Phase 1 retained |
 | R10 | CampusUser (assignee) | is assigned | SpaceMaintenance | 0..1:N | CampusUser: optional, SpaceMaintenance: optional | Modified (optionality corrected) | DDL allows `assigned_staff_id` to be NULL |
-| R11 | SpaceBooking | discloses | BookingAdvisoryAcknowledgement | 1:N | SpaceBooking: optional, BookingAdvisoryAcknowledgement: mandatory | **New** | Per-booking disclosure snapshot (Phase 2 §1.1) |
-| R12 | SpaceMaintenance | is disclosed in | BookingAdvisoryAcknowledgement | 1:N | SpaceMaintenance: optional, BookingAdvisoryAcknowledgement: mandatory | **New** | Per-advisory traceability (Phase 2 §1.1) |
-| R13 | SpaceTypeBookingPolicy | applies to | CampusSpace | 1:N | SpaceTypeBookingPolicy: optional, CampusSpace: mandatory | **New** | Generic instant-booking eligibility (Phase 2 §1.2) |
+| R11 | SpaceTypeBookingPolicy | applies to | CampusSpace | 1:N | SpaceTypeBookingPolicy: optional, CampusSpace: mandatory | **New** | Generic instant-booking eligibility (Phase 2 §1.2) |
+| R12 | CampusFacility        | undergoes    | FacilityMaintenance | 1:N         | CampusFacility: optional, FacilityMaintenance: mandatory | **New**       | A facility may have multiple maintenance records; each maintenance record belongs to exactly one facility.                              |
+| R13 | CampusUser (reporter) | reports      | FacilityMaintenance | 1:N         | CampusUser: optional, FacilityMaintenance: mandatory     | **New**       | Each facility maintenance record is reported by one campus user.                                                                        |
+| R14 | CampusUser (staff)    | is assigned  | FacilityMaintenance | 0..1:N      | CampusUser: optional, FacilityMaintenance: optional      | **New**       | A facility maintenance record may be assigned to one staff member; assignment is optional while the maintenance is awaiting processing. |
 
-Relationship IDs R1–R10 are retained from the Phase 1 ERD (`02-erd-design-G02.md` §3); R11–R13 are new sequential IDs.
+
+Relationship IDs R1–R10 are retained from the Phase 1 ERD (`02-erd-design-G02.md` §3); R11–R14 are new sequential IDs.
 
 ---
 
@@ -369,9 +339,10 @@ end
 
 subgraph FAC ["`**CampusFacility**`"]
 FAC1["`**🔑 campus_facility_id**`"] ~~~
-FAC2["`⭐ facility_name`"] ~~~
-FAC3["description"]~~~
-FAC4["`*🔗 campus_space_code*`"]
+FAC2["`⭐ facility_type`"] ~~~
+FAC3["description"] ~~~
+FAC4["`*🔗 campus_space_code*`"] ~~~
+FAC5["status"]
 end
 
 subgraph BKG ["`**SpaceBooking**`"]
@@ -383,18 +354,18 @@ BKG5["requested_end_time"] ~~~
 BKG6["purpose_type"] ~~~
 BKG7["expected_participants"] ~~~
 BKG8["status"] ~~~
-BKG9["submitted_at"]
+BKG9["is_instant_booking"] ~~~
+BKG10["submitted_at"]
 end
 
 subgraph APR ["`**BookingApproval**`"]
 APR1["`**🔑 booking_approval_id**`"] ~~~
 APR2["`*🔗 space_booking_id*`"] ~~~
 APR3["`*🔗 staff_id*`"] ~~~
-APR4["approval_type"] ~~~
-APR5["decision"] ~~~
-APR6["decision_time"] ~~~
-APR7["decision_note"] ~~~
-APR8["rejection_reason"]
+APR4["decision"] ~~~
+APR5["decision_time"] ~~~
+APR6["decision_note"] ~~~
+APR7["rejection_reason"]
 end
 
 subgraph SES ["`**SpaceUsageSession**`"]
@@ -422,10 +393,18 @@ MNT10["status"] ~~~
 MNT11["result_note"]
 end
 
-subgraph ACK ["`**BookingAdvisoryAcknowledgement**`"]
-ACK1["`***🔑🔗 space_booking_id***`"] ~~~
-ACK2["`***🔑🔗 space_maintenance_id***`"] ~~~
-ACK3["acknowledged_at"]
+subgraph FMN ["`**FacilityMaintenance**`"]
+FMN1["`**🔑 facility_maintenance_id**`"] ~~~
+FMN2["`*🔗 campus_facility_id*`"] ~~~
+FMN3["`*🔗 reporter_id*`"] ~~~
+FMN4["`*🔗 assigned_staff_id*`"] ~~~
+FMN5["impact_level"] ~~~
+FMN6["problem_description"] ~~~
+FMN7["start_time"] ~~~
+FMN8["completion_time"] ~~~
+FMN9["status"] ~~~
+FMN10["notify_status"] ~~~
+FMN11["result_note"]
 end
 
 subgraph POL ["`**SpaceTypeBookingPolicy**`"]
@@ -443,28 +422,37 @@ SEM5["start_date"] ~~~
 SEM6["end_date"]
 end
 
+%% Foreign-key references
+
 BKG2 --> USR1
 BKG3 --> SPC1
+
 FAC4 --> SPC1
+
 APR2 --> BKG1
 APR3 --> USR1
+
 SES2 --> BKG1
 SES3 --> USR1
+
 MNT2 --> SPC1
 MNT3 --> USR1
 MNT4 --> USR1
-ACK1 --> BKG1
-ACK2 --> MNT1
+
+FMN2 --> FAC1
+FMN3 --> USR1
+FMN4 --> USR1
+
 SPC3 --> POL1
 ```
 
 ### 4.2. Relation Definitions
 
-Unchanged relations retain their Phase 1 definitions exactly as implemented in `05-db-definition-G02.sql`: `CampusUser`, `CampusSpace` (except the new FK in §3.2), `CampusFacility` (attribute named `facility_name` per the DDL), `SpaceBooking`, `SpaceUsageSession`. Definitions below cover every changed or new relation.
+Unchanged relations retain their Phase 1 definitions exactly as implemented in `05-db-definition-G02.sql`: `CampusUser`, `BookingApproval`, and `SpaceUsageSession`. Definitions below cover every changed or new relation and preserve the attribute names shown in the ERD and relational schema diagram.
 
 #### CampusSpace (modified — new FK only)
 
-```
+```text
 CampusSpace(campus_space_code PK, space_name, space_type FK→SpaceTypeBookingPolicy.space_type, building, floor, room_number, capacity, current_status, usage_policy)
 ```
 
@@ -472,17 +460,50 @@ CampusSpace(campus_space_code PK, space_name, space_type FK→SpaceTypeBookingPo
 |---|---|---|---|---|---|
 | campus_space_code | NVARCHAR(20) | NOT NULL | PK | — | — |
 | space_name | NVARCHAR(100) | NOT NULL | — | — | — |
-| space_type | NVARCHAR(30) | NOT NULL | FK | — | `SpaceTypeBookingPolicy.space_type`; CHECK domain as Phase 1 |
-| building | NVARCHAR(100) | NOT NULL | — | — | UK (building, floor, room_number) as Phase 1 |
-| floor | INT | NOT NULL | — | — | — |
-| room_number | NVARCHAR(20) | NOT NULL | — | — | — |
+| space_type | NVARCHAR(30) | NOT NULL | FK + CHECK | — | `SpaceTypeBookingPolicy.space_type`; `CHECK (space_type IN ('auditorium','classroom','computer_lab','meeting_room'))` |
+| building | NVARCHAR(100) | NOT NULL | — | — | Part of UK `(building, floor, room_number)` |
+| floor | INT | NOT NULL | — | — | Part of UK `(building, floor, room_number)` |
+| room_number | NVARCHAR(20) | NOT NULL | — | — | Part of UK `(building, floor, room_number)` |
 | capacity | INT | NOT NULL | CHECK | — | `capacity > 0` |
-| current_status | NVARCHAR(30) | NOT NULL | CHECK | 'available' | domain as Phase 1 |
+| current_status | NVARCHAR(30) | NOT NULL | CHECK | 'available' | `CHECK (current_status IN ('available','in_use','under_maintenance','temporarily_closed','retired'))` |
 | usage_policy | NVARCHAR(MAX) | NULL | — | — | — |
+
+#### CampusFacility (modified)
+
+```text
+CampusFacility(campus_facility_id PK, facility_type UK, description, campus_space_code FK→CampusSpace.campus_space_code, status)
+```
+
+| Attribute | SQL Server Data Type | Nullability | Key/Constraint | Default | References / Rule |
+|---|---|---|---|---|---|
+| campus_facility_id | INT | NOT NULL | PK | IDENTITY(1,1) | — |
+| facility_type | NVARCHAR(100) | NOT NULL | UK | — | Preserved attribute name; one row represents one facility |
+| description | NVARCHAR(MAX) | NULL | — | — | — |
+| campus_space_code | NVARCHAR(20) | NULL | FK | — | `CampusSpace.campus_space_code` |
+| status | NVARCHAR(30) | NOT NULL | CHECK | 'available' | `CHECK (status IN ('available','in_use','under_maintenance'))` |
+
+#### SpaceBooking (modified)
+
+```text
+SpaceBooking(space_booking_id PK, requester_id FK→CampusUser.campus_user_id, campus_space_code FK→CampusSpace.campus_space_code, requested_start_time, requested_end_time, purpose_type, expected_participants, status, is_instant_booking, submitted_at)
+```
+
+| Attribute | SQL Server Data Type | Nullability | Key/Constraint | Default | References / Rule |
+|---|---|---|---|---|---|
+| space_booking_id | INT | NOT NULL | PK | IDENTITY(1,1) | — |
+| requester_id | INT | NOT NULL | FK | — | `CampusUser.campus_user_id` |
+| campus_space_code | NVARCHAR(20) | NOT NULL | FK | — | `CampusSpace.campus_space_code` |
+| requested_start_time | DATETIME2 | NOT NULL | CHECK | — | Must be before `requested_end_time` |
+| requested_end_time | DATETIME2 | NOT NULL | CHECK | — | `requested_end_time > requested_start_time` |
+| purpose_type | NVARCHAR(40) | NOT NULL | CHECK | — | `CHECK (purpose_type IN ('lecture','examination','seminar','workshop','meeting','student_activity','administrative_event'))` |
+| expected_participants | INT | NOT NULL | CHECK | — | `expected_participants > 0`; must not exceed space capacity |
+| status | NVARCHAR(20) | NOT NULL | CHECK | 'pending' | `CHECK (status IN ('pending','approved','rejected','cancelled','checked_in','completed','no-show'))` |
+| is_instant_booking | BIT | NOT NULL | CHECK | 0 | `CHECK (is_instant_booking IN (0,1))`; `0` = staff workflow, `1` = automatic approval |
+| submitted_at | DATETIME2 | NOT NULL | — | GETDATE() | — |
 
 #### SpaceMaintenance (modified)
 
-```
+```text
 SpaceMaintenance(space_maintenance_id PK, campus_space_code FK→CampusSpace.campus_space_code, reporter_id FK→CampusUser.campus_user_id, assigned_staff_id FK→CampusUser.campus_user_id, impact_level, problem_description, problem_type, start_time, completion_time, status, result_note)
 ```
 
@@ -492,78 +513,73 @@ SpaceMaintenance(space_maintenance_id PK, campus_space_code FK→CampusSpace.cam
 | campus_space_code | NVARCHAR(20) | NOT NULL | FK | — | `CampusSpace.campus_space_code` |
 | reporter_id | INT | NOT NULL | FK | — | `CampusUser.campus_user_id` |
 | assigned_staff_id | INT | NULL | FK | — | `CampusUser.campus_user_id` |
-| impact_level | NVARCHAR(20) | NOT NULL | **CHECK** | 'out_of_service' | `CHECK (impact_level IN ('out_of_service','advisory'))` — **new** |
+| impact_level | NVARCHAR(20) | NOT NULL | CHECK | 'out_of_service' | `CHECK (impact_level IN ('out_of_service','advisory'))` |
 | problem_description | NVARCHAR(MAX) | NOT NULL | — | — | — |
-| problem_type | NVARCHAR(30) | NOT NULL | CHECK | — | domain as Phase 1 |
+| problem_type | NVARCHAR(30) | NOT NULL | CHECK | — | `CHECK (problem_type IN ('ac_failure','damaged_furniture','cleaning','network','other'))` |
 | start_time | DATETIME2 | NOT NULL | — | GETDATE() | — |
-| completion_time | DATETIME2 | NULL | **CHECK** | — | **new:** `CHECK (completion_time IS NULL OR completion_time > start_time)`; `CHECK (status = 'completed' ⇒ completion_time IS NOT NULL)`; `CHECK (status IN ('reported','in_progress') ⇒ completion_time IS NULL)` |
-| status | NVARCHAR(20) | NOT NULL | CHECK | 'reported' | domain as Phase 1 |
+| completion_time | DATETIME2 | NULL | CHECK | — | `completion_time IS NULL OR completion_time > start_time` |
+| status | NVARCHAR(20) | NOT NULL | CHECK | 'reported' | `CHECK (status IN ('reported','in_progress','completed','cancelled'))` |
 | result_note | NVARCHAR(MAX) | NULL | — | — | — |
 
-#### BookingApproval (modified)
+Additional interval consistency rules:
 
-```
-BookingApproval(booking_approval_id PK, space_booking_id FK→SpaceBooking.space_booking_id UK, staff_id FK→CampusUser.campus_user_id, approval_type, decision, decision_time, decision_note, rejection_reason)
-```
+- `status = 'completed'` requires `completion_time IS NOT NULL`.
+- `status IN ('reported','in_progress')` requires `completion_time IS NULL`.
 
-| Attribute | SQL Server Data Type | Nullability | Key/Constraint | Default | References / Rule |
-|---|---|---|---|---|---|
-| booking_approval_id | INT | NOT NULL | PK | IDENTITY(1,1) | — |
-| space_booking_id | INT | NOT NULL | FK + UK | — | `SpaceBooking.space_booking_id`; UNIQUE keeps 1:1 (R4) |
-| staff_id | INT | **NULL** | FK | — | `CampusUser.campus_user_id`; **changed from NOT NULL** — NULL only when `approval_type='automatic'` |
-| approval_type | NVARCHAR(20) | NOT NULL | **CHECK** | — | **new:** `CHECK (approval_type IN ('automatic','staff'))` |
-| decision | NVARCHAR(10) | NOT NULL | CHECK | — | `CHECK (decision IN ('approved','rejected'))` |
-| decision_time | DATETIME2 | NOT NULL | — | GETDATE() | approval moment; automatic = submission-time system timestamp |
-| decision_note | NVARCHAR(MAX) | NULL | — | — | — |
-| rejection_reason | NVARCHAR(MAX) | NULL | CHECK | — | BR-04 as Phase 1 |
+#### FacilityMaintenance (new)
 
-**New cross-attribute checks (row-level, SQL Server `CHECK` can enforce them):**
-
-- `CHECK ((approval_type = 'automatic' AND staff_id IS NULL) OR (approval_type = 'staff' AND staff_id IS NOT NULL))`
-- BR-04 preserved: `CHECK ((decision = 'rejected' AND rejection_reason IS NOT NULL) OR (decision = 'approved'))`
-
-#### BookingAdvisoryAcknowledgement (new)
-
-```
-BookingAdvisoryAcknowledgement(space_booking_id FK→SpaceBooking.space_booking_id PK, space_maintenance_id FK→SpaceMaintenance.space_maintenance_id PK, acknowledged_at)
+```text
+FacilityMaintenance(facility_maintenance_id PK, campus_facility_id FK→CampusFacility.campus_facility_id, reporter_id FK→CampusUser.campus_user_id, assigned_staff_id FK→CampusUser.campus_user_id, impact_level, problem_description, start_time, completion_time, status, notify_status, result_note)
 ```
 
 | Attribute | SQL Server Data Type | Nullability | Key/Constraint | Default | References / Rule |
 |---|---|---|---|---|---|
-| space_booking_id | INT | NOT NULL | **Composite PK + FK** | — | `SpaceBooking.space_booking_id` |
-| space_maintenance_id | INT | NOT NULL | **Composite PK + FK** | — | `SpaceMaintenance.space_maintenance_id` |
-| acknowledged_at | DATETIME2 | NOT NULL | — | GETDATE() | when the requester acknowledged |
+| facility_maintenance_id | INT | NOT NULL | PK | IDENTITY(1,1) | — |
+| campus_facility_id | INT | NOT NULL | FK | — | `CampusFacility.campus_facility_id` |
+| reporter_id | INT | NOT NULL | FK | — | `CampusUser.campus_user_id` |
+| assigned_staff_id | INT | NULL | FK | — | `CampusUser.campus_user_id` |
+| impact_level | NVARCHAR(20) | NOT NULL | CHECK | 'advisory' | `CHECK (impact_level IN ('out_of_service','advisory'))` |
+| problem_description | NVARCHAR(MAX) | NOT NULL | — | — | — |
+| start_time | DATETIME2 | NOT NULL | — | GETDATE() | — |
+| completion_time | DATETIME2 | NULL | CHECK | — | `completion_time IS NULL OR completion_time > start_time` |
+| status | NVARCHAR(20) | NOT NULL | CHECK | 'reported' | `CHECK (status IN ('reported','in_progress','completed','cancelled'))` |
+| notify_status | NVARCHAR(40) | NOT NULL | CHECK | 'nothing_to_notify' | `CHECK (notify_status IN ('nothing_to_notify','updated_to_advisory','updated_to_out_of_service'))` |
+| result_note | NVARCHAR(MAX) | NULL | — | — | — |
 
-Composite PK `(space_booking_id, space_maintenance_id)` enforces the uniqueness rule "one acknowledgement per advisory per booking" (BR-13). No `acknowledged_by` column: the acknowledging requester is safely derivable from `SpaceBooking.requester_id`.
+Additional consistency rules:
+
+- `status = 'completed'` requires `completion_time IS NOT NULL`.
+- `status IN ('reported','in_progress')` requires `completion_time IS NULL`.
+- Notification and acknowledgement processing based on `notify_status` is enforced by trigger, stored procedure, or application logic.
 
 #### SpaceTypeBookingPolicy (new)
 
-```
+```text
 SpaceTypeBookingPolicy(space_type PK, instant_booking_eligible, policy_note)
 ```
 
 | Attribute | SQL Server Data Type | Nullability | Key/Constraint | Default | References / Rule |
 |---|---|---|---|---|---|
 | space_type | NVARCHAR(30) | NOT NULL | PK + CHECK | — | `CHECK (space_type IN ('auditorium','classroom','computer_lab','meeting_room'))` |
-| instant_booking_eligible | BIT | NOT NULL | — | 0 | configuration flag — not eligible ⇒ staff approval |
-| policy_note | NVARCHAR(MAX) | NULL | — | — | free-text policy description |
+| instant_booking_eligible | BIT | NOT NULL | CHECK | 0 | `CHECK (instant_booking_eligible IN (0,1))` |
+| policy_note | NVARCHAR(MAX) | NULL | — | — | Free-text policy description |
 
 #### Semester (new)
 
-```
+```text
 Semester(semester_id PK, academic_year, semester_no, semester_name, start_date, end_date, UK(academic_year, semester_no))
 ```
 
 | Attribute | SQL Server Data Type | Nullability | Key/Constraint | Default | References / Rule |
 |---|---|---|---|---|---|
 | semester_id | INT | NOT NULL | PK | IDENTITY(1,1) | — |
-| academic_year | NVARCHAR(9) | NOT NULL | — | — | e.g., `2025-2026` |
-| semester_no | NVARCHAR(20) | NOT NULL | — | — | e.g., `1`, `2`, `3` |
-| semester_name | NVARCHAR(100) | NOT NULL | — | — | display name |
+| academic_year | NVARCHAR(9) | NOT NULL | Part of UK | — | Example: `2025-2026` |
+| semester_no | NVARCHAR(20) | NOT NULL | Part of UK | — | Example: `1`, `2`, or `3` |
+| semester_name | NVARCHAR(100) | NOT NULL | — | — | Display name |
 | start_date | DATE | NOT NULL | CHECK | — | — |
-| end_date | DATE | NOT NULL | CHECK | — | `CHECK (end_date > start_date)` |
+| end_date | DATE | NOT NULL | CHECK | — | `end_date > start_date` |
 
-Unique key `(academic_year, semester_no)` prevents duplicate semesters. No FK links `Semester` to `SpaceBooking`; membership is derived by temporal overlap of the booking interval with `[start_date, end_date]`.
+Unique key `(academic_year, semester_no)` prevents duplicate semester definitions. Booking membership is derived by temporal overlap with the semester period; no `semester_id` FK is stored in `SpaceBooking`.
 
 ### 4.3. Key and Integrity Constraint Summary
 
@@ -571,107 +587,282 @@ Unique key `(academic_year, semester_no)` prevents duplicate semesters. No FK li
 
 | Relation | PK |
 |---|---|
-| BookingAdvisoryAcknowledgement | Composite `(space_booking_id, space_maintenance_id)` |
+| FacilityMaintenance | `facility_maintenance_id` |
 | SpaceTypeBookingPolicy | `space_type` |
 | Semester | `semester_id` |
+
+---
 
 **New foreign keys**
 
 | FK | Target | Note |
 |---|---|---|
-| `CampusSpace.space_type` | `SpaceTypeBookingPolicy.space_type` | R13 |
-| `BookingAdvisoryAcknowledgement.space_booking_id` | `SpaceBooking.space_booking_id` | R11, part of composite PK |
-| `BookingAdvisoryAcknowledgement.space_maintenance_id` | `SpaceMaintenance.space_maintenance_id` | R12, part of composite PK |
-
-Modified FK: `BookingApproval.staff_id → CampusUser.campus_user_id` changed from `NOT NULL` to nullable (automatic approvals); all other Phase 1 FKs unchanged.
-
-**New candidate/unique keys**
-
-| Relation | UK | Purpose |
-|---|---|---|
-| Semester | `(academic_year, semester_no)` | one semester per academic year + number |
-| BookingAdvisoryAcknowledgement | composite PK serves as UK | one acknowledgement per (booking, advisory) |
-
-**New CHECK / NOT NULL / DEFAULT constraints**
-
-- `SpaceMaintenance.impact_level` `NOT NULL DEFAULT 'out_of_service'` with `CHECK IN ('out_of_service','advisory')`.
-- `SpaceMaintenance` interval checks: `completion_time IS NULL OR completion_time > start_time`; `status='completed' ⇒ completion_time IS NOT NULL`; `status IN ('reported','in_progress') ⇒ completion_time IS NULL`.
-- `BookingApproval.approval_type` `NOT NULL` with `CHECK IN ('automatic','staff')`.
-- `BookingApproval` approval/staff consistency: `(approval_type='automatic' AND staff_id IS NULL) OR (approval_type='staff' AND staff_id IS NOT NULL)`.
-- `Semester.end_date > start_date`.
-- `BookingAdvisoryAcknowledgement.acknowledged_at` `NOT NULL DEFAULT GETDATE()`.
-- `SpaceTypeBookingPolicy.instant_booking_eligible` `NOT NULL DEFAULT 0`.
-
-**Cross-row / cross-table rules requiring transaction logic, trigger, or stored procedure (not `CHECK`/`UNIQUE` — SQL Server `CHECK` cannot query another row or table):**
-
-- BR-01 / BR-12 — time-range overlap of approved bookings for the same space (transactional stored procedure, Steps 11–13).
-- BR-02 / BR-09 — active out-of-service maintenance interval overlap at booking/approval time (transactional stored procedure).
-- BR-03 — status-transition flow and the `SpaceBooking.status` ↔ `BookingApproval.decision` consistency rule (triggers / protected stored procedure).
-- BR-11 — instant eligibility resolution + automatic approval record creation (protected stored procedure / application policy).
-- BR-13 — capturing the advisory snapshot into `BookingAdvisoryAcknowledgement` at submission (protected stored procedure).
-- BR-14 — escalation-affected-booking identification (derived query).
-
-**Recommended indexes (recommendations only, for `15-index-tuning-report-G02.md` — a normal index alone is not a concurrency guarantee):**
-
-- `SpaceBooking (campus_space_code, requested_start_time, requested_end_time)` with `status` — supports the overlap invariant check and reports 1/2/4.
-- `SpaceMaintenance (campus_space_code, impact_level, start_time, completion_time)` — supports the out-of-service check and report 4.
-- `CampusFacility (campus_space_code, facility_name)` — supports the room-finder facility matching (report 3).
-- `SpaceBooking (requested_start_time)` — supports semester-range joins.
+| `CampusSpace.space_type` | `SpaceTypeBookingPolicy.space_type` | R11 |
+| `FacilityMaintenance.campus_facility_id` | `CampusFacility.campus_facility_id` | R12 |
+| `FacilityMaintenance.reporter_id` | `CampusUser.campus_user_id` | R13 |
+| `FacilityMaintenance.assigned_staff_id` | `CampusUser.campus_user_id` | R14 |
 
 ---
 
+**Modified foreign keys**
+
+No existing foreign keys from Phase 1 are modified.
+
+---
+
+**New candidate / unique keys**
+
+| Relation | UK | Purpose |
+|---|---|---|
+| Semester | `(academic_year, semester_no)` | Prevent duplicate semester definitions |
+
+---
+
+**New CHECK / NOT NULL / DEFAULT constraints**
+
+- `SpaceBooking.is_instant_booking`
+  - `NOT NULL`
+  - `DEFAULT 0`
+  - `CHECK (is_instant_booking IN (0,1))`
+
+- `SpaceMaintenance.impact_level`
+  - `NOT NULL`
+  - `DEFAULT 'out_of_service'`
+  - `CHECK (impact_level IN ('out_of_service','advisory'))`
+
+- `FacilityMaintenance.impact_level`
+  - `NOT NULL`
+  - `DEFAULT 'advisory'`
+  - `CHECK (impact_level IN ('out_of_service','advisory'))`
+
+- `FacilityMaintenance.notify_status`
+  - `NOT NULL`
+  - `DEFAULT 'nothing_to_notify'`
+  - `CHECK (notify_status IN ('nothing_to_notify','updated_to_advisory','updated_to_out_of_service'))`
+
+- `SpaceMaintenance`
+  - `completion_time IS NULL OR completion_time > start_time`
+  - `status='completed' ⇒ completion_time IS NOT NULL`
+  - `status IN ('reported','in_progress') ⇒ completion_time IS NULL`
+
+- `FacilityMaintenance`
+  - `completion_time IS NULL OR completion_time > start_time`
+  - `status='completed' ⇒ completion_time IS NOT NULL`
+  - `status IN ('reported','in_progress') ⇒ completion_time IS NULL`
+
+- `Semester`
+  - `CHECK (end_date > start_date)`
+
+---
+
+**Cross-row / cross-table rules requiring trigger, stored procedure, or application logic**
+
+(SQL Server `CHECK` constraints cannot validate multiple rows or multiple tables.)
+
+- **BR-01 / BR-12**
+  - Prevent overlapping approved bookings for the same space.
+  - Requires transactional stored procedure.
+
+- **BR-02 / BR-09**
+  - Prevent booking when an active **out_of_service** maintenance interval overlaps the requested booking period.
+  - Requires transactional stored procedure.
+
+- **BR-03**
+  - Enforce booking workflow transitions.
+  - Maintain consistency between `SpaceBooking.status` and `BookingApproval`.
+  - Trigger or protected stored procedure.
+
+- **BR-05**
+  - Only Facility Staff or Facility Manager may approve bookings.
+  - Application logic.
+
+- **BR-06**
+  - Only Facility Staff may perform check-in.
+  - Application logic.
+
+- **BR-07**
+  - Expected participants must not exceed space capacity.
+  - Trigger.
+
+- **BR-11**
+  - Determine whether a booking is instant or staff-approved using `SpaceTypeBookingPolicy.instant_booking_eligible`.
+  - Automatically set `SpaceBooking.is_instant_booking`.
+  - Protected stored procedure or application logic.
+
+- **BR-13**
+  - When advisory maintenance exists, notify the requester.
+  - Update `FacilityMaintenance.notify_status`.
+  - Trigger, stored procedure, or application logic.
+
+- **BR-14**
+  - When maintenance is escalated from advisory to out_of_service, identify affected approved bookings.
+  - Implemented as a derived query.
+
+---
+
+**Recommended indexes**
+(Recommendations only. These improve performance but do not guarantee concurrency correctness.)
+
+- `SpaceBooking`
+  - `(campus_space_code, requested_start_time, requested_end_time, status)`
+
+- `SpaceMaintenance`
+  - `(campus_space_code, impact_level, start_time, completion_time)`
+
+- `FacilityMaintenance`
+  - `(campus_facility_id, impact_level, notify_status)`
+
+- `CampusFacility`
+  - `(campus_space_code, facility_type)`
+
+- `SpaceBooking`
+  - `(requested_start_time)`
+  
 ## 5. Updated Business Rule Enforcement Map
 
 Rule identifiers follow Phase 1 (`01-business-req-analysis-G02.md` §6, `03-logical-design-G02.md` §2) and Step 08 (`08-requirement-change-analysis-G02.md` §4), with corrections applied.
 
 | Business Rule ID | Updated Rule | Status | Enforcement Mechanism | Relations | Attributes | Design Notes / Deferred Artifact |
 |---|---|---|---|---|---|---|
-| BR-01 | For the same campus space, no two bookings in the approved lifecycle (`status IN ('approved','checked_in','completed','no-show')`) may have overlapping requested time intervals. Applies to both instant and staff approval paths. | Modified | Transactional Stored Procedure | SpaceBooking | campus_space_code, requested_start_time, requested_end_time, status | Half-open overlap rule `existing_start < requested_end AND requested_start < existing_end`. Cannot be a `CHECK`/`UNIQUE`. Replaces Phase 1 trigger TRG-01. Deferred to artifacts 11–13. |
-| BR-02 | A space that is `temporarily_closed` or `retired` cannot be booked. A space with an active maintenance interval (`impact_level='out_of_service'`) overlapping the requested period cannot be approved. Advisory maintenance does not block booking. | Modified | Transactional Stored Procedure | CampusSpace, SpaceMaintenance, SpaceBooking | current_status, impact_level, start_time, completion_time, status | Check at submission and re-checked at approval inside the protected transaction. Deferred to artifacts 11–13. |
-| BR-03 | Booking status flows `pending → approved/rejected/cancelled → checked_in → completed/no-show`, and `SpaceBooking.status` is consistent with `BookingApproval.decision` (`approved` ⟺ decision `approved`; `rejected` ⟺ decision `rejected`; `pending` ⟹ no approval row). | Modified | Trigger | SpaceBooking, BookingApproval | status, decision | Cross-row consistency cannot be a `CHECK`. Extends Phase 1 TRG-02. Deferred to artifacts 11–13. |
-| BR-04 | `rejection_reason` is required when `decision='rejected'`. | Unchanged | CHECK | BookingApproval | decision, rejection_reason | Phase 1 CHECK preserved. |
-| BR-05 | A staff approval must be made by a facility staff member or facility manager. Automatic approvals have no staff member. | Modified | CHECK + Application/Policy Logic | BookingApproval, CampusUser | approval_type, staff_id, role | `CHECK ((approval_type='automatic' AND staff_id IS NULL) OR (approval_type='staff' AND staff_id IS NOT NULL))`; role check is application logic. |
-| BR-06 | Check-in must be performed by facility staff. | Unchanged | Application/Policy Logic | SpaceUsageSession, CampusUser | checked_in_by, role | Phase 1 behaviour preserved. |
-| BR-07 | `expected_participants` must not exceed space capacity. | Unchanged | CHECK + Trigger | SpaceBooking, CampusSpace | expected_participants, capacity | Cross-table check via trigger (Phase 1 TRG-03). |
-| BR-08 | `requested_start_time` must be before `requested_end_time`. | Unchanged | CHECK | SpaceBooking | requested_start_time, requested_end_time | Phase 1 CHECK preserved. |
-| BR-09 | Only active maintenance with `impact_level='out_of_service'` whose interval overlaps the requested period prevents booking; advisory maintenance never blocks. Maintenance status alone is not the deciding signal. | Modified | Transactional Stored Procedure | SpaceMaintenance, SpaceBooking | impact_level, start_time, completion_time, status | Supersedes Phase 1 "status `in_progress` prevents booking" rule. Same enforcement as BR-02. Deferred to artifacts 11–13. |
-| BR-10 | Historical records of bookings, maintenance, and acknowledgements must be preserved (no hard deletes). | Unchanged | Application/Policy Logic | All relations | N/A | `ON DELETE NO ACTION` preserved; acknowledgement rows are immutable. |
-| BR-11 | For space types with `instant_booking_eligible = 1` in `SpaceTypeBookingPolicy`, requests satisfying the space's `usage_policy` are auto-approved at submission (`approval_type='automatic'`, `staff_id NULL`, `status='approved'`). All other requests go to staff approval. | New (corrected) | Application/Policy Logic + Transactional Stored Procedure | SpaceTypeBookingPolicy, CampusSpace, SpaceBooking, BookingApproval | space_type, instant_booking_eligible, usage_policy, approval_type, status | Step 08's "classrooms/auditoriums" assumption removed — eligibility is configuration data. Instant path writes the approval record in the same transaction. Deferred to artifacts 10–13. |
-| BR-12 | No two approved bookings may overlap for the same space, regardless of approval path, even under concurrent operations by multiple users/staff. | New | Transactional Stored Procedure | SpaceBooking | campus_space_code, requested_start_time, requested_end_time, status | Same protected invariant as BR-01; both approval paths invoke it. Deferred to artifacts 11–13. |
-| BR-13 | When a booking is submitted for a space with active advisory maintenance records, the requester is notified of every active advisory and one acknowledgement per advisory is recorded in `BookingAdvisoryAcknowledgement` before the booking is created. | New (corrected) | Composite Key (UNIQUE) + Transactional Stored Procedure | SpaceBooking, SpaceMaintenance, BookingAdvisoryAcknowledgement | space_booking_id, space_maintenance_id, acknowledged_at | Composite PK enforces one ack per (booking, advisory). Snapshot captured at submission. Deferred to artifacts 10–13. |
-| BR-14 | When a maintenance record is escalated from `advisory` to `out_of_service`, approved bookings whose intervals overlap its maintenance interval are identified so staff can contact requesters. Bookings are **not** automatically cancelled. | New | Derived Query | SpaceMaintenance, SpaceBooking | impact_level, start_time, completion_time, campus_space_code, requested_start_time, requested_end_time, status | Report 4; derived dynamically from intervals; results are not persisted. Deferred to artifact 16. |
+| Business Rule ID | Updated Rule | Status | Enforcement Mechanism | Relations | Attributes | Design Notes / Deferred Artifact |
+|---|---|---|---|---|---|---|
+| BR-01 | For the same campus space, no two bookings in the approved lifecycle (`approved`, `checked_in`, `completed`, `no-show`) may have overlapping requested time intervals. Applies to both instant and staff-approved bookings. | Modified | Transactional Stored Procedure | SpaceBooking | campus_space_code, requested_start_time, requested_end_time, status | Shared concurrency invariant. Deferred to concurrency implementation (Steps 11–13). |
+| BR-02 | A space that is `temporarily_closed` or `retired` cannot be booked. An active `SpaceMaintenance` record with `impact_level='out_of_service'` whose interval overlaps the requested booking period prevents approval. Advisory maintenance does not block booking. | Modified | Transactional Stored Procedure | CampusSpace, SpaceMaintenance, SpaceBooking | current_status, impact_level, start_time, completion_time, status | Interval-based validation performed during booking submission and approval. |
+| BR-03 | Booking status follows the workflow `pending → approved/rejected/cancelled → checked_in → completed/no-show`. `BookingApproval.decision` must remain consistent with `SpaceBooking.status`. | Modified | Trigger / Stored Procedure | SpaceBooking, BookingApproval | status, decision | BookingApproval structure remains unchanged. |
+| BR-04 | `rejection_reason` is mandatory when `decision='rejected'`. | Unchanged | CHECK Constraint | BookingApproval | decision, rejection_reason | Phase 1 rule retained. |
+| BR-05 | Only Facility Staff or Facility Manager may approve bookings requiring manual approval. | Modified | Application Logic | BookingApproval, CampusUser | staff_id, role | Instant bookings bypass manual approval through `SpaceBooking.is_instant_booking`. |
+| BR-06 | Check-in must be performed by Facility Staff. | Unchanged | Application Logic | SpaceUsageSession, CampusUser | checked_in_by, role | Phase 1 behaviour retained. |
+| BR-07 | Expected participants must not exceed the capacity of the booked space. | Unchanged | Trigger | SpaceBooking, CampusSpace | expected_participants, capacity | Cross-table validation. |
+| BR-08 | `requested_start_time` must be earlier than `requested_end_time`. | Unchanged | CHECK Constraint | SpaceBooking | requested_start_time, requested_end_time | Phase 1 rule retained. |
+| BR-09 | Only active `SpaceMaintenance` records with `impact_level='out_of_service'` block bookings. Advisory maintenance does not prevent booking. | Modified | Transactional Stored Procedure | SpaceMaintenance, SpaceBooking | impact_level, start_time, completion_time, status | Refines the original maintenance rule by introducing impact levels. |
+| BR-10 | Historical booking and maintenance records are preserved. No hard deletes are permitted. | Unchanged | Application Logic | SpaceBooking, SpaceMaintenance, FacilityMaintenance | N/A | Historical records remain available for auditing and reporting. |
+| BR-11 | Space types configured as instant-booking eligible automatically create approved bookings. Other space types follow the manual approval workflow. | New | Application Logic / Stored Procedure | SpaceTypeBookingPolicy, CampusSpace, SpaceBooking | space_type, instant_booking_eligible, is_instant_booking | BookingApproval is unchanged and only created for manual approvals. |
+| BR-12 | The booking overlap constraint must remain valid even when multiple users submit or approve bookings concurrently. | New | Transactional Stored Procedure | SpaceBooking | campus_space_code, requested_start_time, requested_end_time, status | Shared concurrency control for both booking paths. |
+| BR-13 | When a facility maintenance record has advisory impact, the system must notify the requester during booking. Notification processing updates `FacilityMaintenance.notify_status`. | New | Trigger / Stored Procedure / Application Logic | FacilityMaintenance, SpaceBooking | impact_level, notify_status | Supports the selected notification design without introducing a separate acknowledgement relation. |
+| BR-14 | When maintenance is escalated from `advisory` to `out_of_service`, the system identifies approved bookings whose requested periods overlap the maintenance interval so staff can notify affected requesters. Bookings are not automatically cancelled. | New | Derived Query | SpaceMaintenance, SpaceBooking | impact_level, start_time, completion_time, campus_space_code | Dynamic reporting requirement for Phase 2. |
 
 ---
 
 ## 6. Concurrency-Sensitive Integrity Requirements
 
-**The shared invariant.** For a given `campus_space_code`, no two bookings in the approved lifecycle may have overlapping requested intervals, and a booking may not be approved while an active out-of-service maintenance interval for the same space overlaps the requested period. Participating attributes: `SpaceBooking.campus_space_code`, `requested_start_time`, `requested_end_time`, `status`; `SpaceMaintenance.impact_level`, `start_time`, `completion_time`, `status`.
+### Shared integrity invariant
 
-**Overlap rule.** Intervals are half-open `[start, end)`; two intervals overlap iff `existing_start < requested_end AND requested_start < existing_end`. Touching intervals (`end1 = start2`) do not overlap.
+For a given `campus_space_code`, no two bookings in the approved lifecycle (`approved`, `checked_in`, `completed`, `no-show`) may have overlapping requested time intervals.
 
-**Why a normal constraint is insufficient.** Ordinary `CHECK` and `UNIQUE` constraints in SQL Server cannot express general time-range overlap across rows, and a conventional index does not prevent two transactions from both reading "no conflict" and both writing an approved booking (phantom reads / race). The invariant therefore requires transactional enforcement — a shared protected stored procedure (with appropriate locking/`UPDLOCK`, `HOLDLOCK` range scan or `sp_getapplock` per space, executed under an appropriate isolation level) that all approval paths call. The concrete locking scheme is designed and implemented in artifacts 11–13; this artifact only exposes the data and the invariant.
+In addition, a booking must not be approved if an active `SpaceMaintenance` record with `impact_level='out_of_service'` overlaps the requested booking period.
 
-**Approval-path unification.** Instant booking, staff approval, and maintenance escalation all serialize on the same per-space data boundary, so no path can bypass the invariant.
+The participating attributes are:
 
-**Data access boundaries that later concurrency design must lock or serialize:**
-
-1. `SpaceBooking` rows in the approved lifecycle for the target `campus_space_code` (overlap check target).
-2. Active `SpaceMaintenance` rows (`status IN ('reported','in_progress')`) for the target `campus_space_code` with `impact_level='out_of_service'` (BR-02/BR-09 check).
-3. The `CampusSpace` row (current status/policy reference).
-4. The `SpaceTypeBookingPolicy` row for the space type (instant eligibility — must be read consistently within the transaction).
-5. The `BookingAdvisoryAcknowledgement` insert for the new booking (BR-13 snapshot, no duplicates via composite PK).
-
-**Traceability table**
-
-| Concurrency Scenario | Relations/Rows Involved | Integrity Risk | Required Atomic Operation | Deferred To |
-|---|---|---|---|---|
-| Instant booking vs instant booking (same space, overlapping periods) | `SpaceBooking` rows for the space; `CampusSpace`; `SpaceTypeBookingPolicy` | Both pass the availability check and both are auto-approved → two overlapping approved bookings (BR-01/BR-12 violation) | Serialize per-space check + insert + auto-approval in one transaction (range lock or `sp_getapplock` on the space key) | 11–13 |
-| Instant booking vs staff approval | `SpaceBooking`; `BookingApproval` | Instant approval commits overlap that a concurrent staff approval also approves | Both paths invoke the same protected stored procedure under the same per-space lock | 11–13 |
-| Staff approval vs staff approval | `SpaceBooking` (pending rows); `BookingApproval` | Two pending overlapping bookings both approved by different staff | Protected approval procedure checks the invariant against approved-lifecycle rows with the per-space range lock | 11–13 |
-| Approval (either path) vs maintenance escalation | `SpaceMaintenance` (active rows); `SpaceBooking`; `CampusSpace` | Approval passes the out-of-service check; concurrent escalation to `out_of_service` commits before the approval write → approved booking overlapping out-of-service maintenance (BR-02/BR-09 violation) | Re-check the active out-of-service maintenance interval inside the same transaction that sets `status='approved'`, holding locks on the space's active maintenance rows | 11–13 |
-| Escalation-affected-booking identification vs concurrent approvals | `SpaceMaintenance`; `SpaceBooking` | The affected-booking query may miss a booking approved concurrently (phantom row) | Compute affected bookings under a consistent snapshot / serializable scope during the escalation operation | 11–13 |
+- `SpaceBooking.campus_space_code`
+- `SpaceBooking.requested_start_time`
+- `SpaceBooking.requested_end_time`
+- `SpaceBooking.status`
+- `SpaceBooking.is_instant_booking`
+- `SpaceMaintenance.campus_space_code`
+- `SpaceMaintenance.impact_level`
+- `SpaceMaintenance.start_time`
+- `SpaceMaintenance.completion_time`
+- `SpaceMaintenance.status`
 
 ---
+
+### Overlap rule
+
+Booking and maintenance intervals follow the half-open interval convention:
+
+```
+[start_time, end_time)
+```
+
+Two intervals overlap when
+
+```
+existing_start < requested_end
+AND
+requested_start < existing_end
+```
+
+Intervals that only touch at their boundaries are not considered overlapping.
+
+---
+
+### Why declarative constraints are insufficient
+
+SQL Server `CHECK` and `UNIQUE` constraints cannot enforce temporal overlap rules across multiple rows.
+
+Likewise, a normal index cannot prevent two concurrent transactions from both reading "available" and then inserting conflicting approved bookings.
+
+Therefore, the overlap invariant requires a transactional implementation using protected stored procedures with appropriate locking and isolation mechanisms.
+
+The detailed implementation is deferred to the concurrency artifacts (Steps 11–13).
+
+---
+
+### Approval-path consistency
+
+Both booking paths must enforce exactly the same booking-conflict rules.
+
+- Instant bookings (`SpaceBooking.is_instant_booking = 1`)
+- Staff-approved bookings (`SpaceBooking.is_instant_booking = 0`)
+
+Both paths must invoke the same protected booking-validation logic before a booking becomes approved.
+
+---
+
+### Notification consistency
+
+When a facility maintenance record has
+
+```
+impact_level = 'advisory'
+```
+
+the system must notify the requester during booking.
+
+The notification process updates
+
+```
+FacilityMaintenance.notify_status
+```
+
+using triggers, stored procedures, or application logic.
+
+When a maintenance record is escalated to
+
+```
+impact_level = 'out_of_service'
+```
+
+the system identifies all overlapping approved bookings so staff can notify affected requesters.
+
+---
+
+### Data access boundaries requiring transactional protection
+
+The following data must be protected during booking submission and approval:
+
+1. Approved-lifecycle `SpaceBooking` rows for the requested campus space.
+
+2. Active `SpaceMaintenance` rows (`reported`, `in_progress`) for the requested campus space whose `impact_level='out_of_service'`.
+
+3. The corresponding `CampusSpace` row.
+
+4. The related `SpaceTypeBookingPolicy` row used to determine instant-booking eligibility.
+
+5. Related `FacilityMaintenance` rows when advisory notifications must be processed.
+
+---
+
+### Traceability Table
+
+| Concurrency Scenario | Relations / Rows Involved | Integrity Risk | Required Atomic Operation | Deferred To |
+|---|---|---|---|---|
+| Instant booking vs Instant booking | `SpaceBooking`, `CampusSpace`, `SpaceTypeBookingPolicy` | Two overlapping bookings become automatically approved | Serialize booking validation and approval for the same space | Steps 11–13 |
+| Instant booking vs Staff approval | `SpaceBooking`, `BookingApproval` | Manual and automatic approval both approve conflicting bookings | Both approval paths invoke the same protected validation procedure | Steps 11–13 |
+| Staff approval vs Staff approval | `SpaceBooking`, `BookingApproval` | Concurrent staff approvals violate the overlap rule | Protected approval transaction | Steps 11–13 |
+| Booking approval vs Maintenance escalation | `SpaceMaintenance`, `SpaceBooking`, `CampusSpace` | Booking approved after maintenance becomes out_of_service | Revalidate maintenance interval immediately before approval commits | Steps 11–13 |
+| Advisory notification vs Concurrent bookings | `FacilityMaintenance`, `SpaceBooking` | Some requesters may not receive advisory notifications during concurrent submissions | Serialize notification processing before booking completion | Steps 11–13 |
+| Maintenance escalation vs Notification processing | `SpaceMaintenance`, `FacilityMaintenance`, `SpaceBooking` | Escalation occurs while advisory notifications are being processed | Execute escalation and affected-booking identification within one protected transaction | Steps 11–13 |
 
 ## 7. Reporting Support Matrix
 
@@ -686,45 +877,40 @@ Rule identifiers follow Phase 1 (`01-business-req-analysis-G02.md` §6, `03-logi
 
 ## 8. Phase 1 to Phase 2 Traceability Matrix
 
-| Requirement / BR | Phase 1 Element | Phase 2 Change | ERD Element | Relation/Constraint | Downstream Artifact |
+| Requirement / BR | Phase 1 Element | Phase 2 Change | ERD Element | Relation / Constraint | Downstream Artifact |
 |---|---|---|---|---|---|
-| Phase 2 §1.1 / `new_requirement.md` — maintenance impact levels | `SpaceMaintenance` | Add impact level; out-of-service blocks, advisory does not | `SpaceMaintenance` entity | `SpaceMaintenance.impact_level` + CHECK; BR-02/BR-09 | 10, 11–13 |
-| Phase 2 §1.1 — several active maintenance records, different levels | R8 (1:N) | None required — multiple rows per space | R8 | no cross-row constraint (explicitly allowed) | 10, 14 |
-| Phase 2 §1.1 — escalation/downgrade while open | `SpaceMaintenance.status` only | `impact_level` mutable while open | `SpaceMaintenance.impact_level` | `UPDATE` via maintenance-management transaction | 10, 11–13 |
-| Phase 2 §1.1 — temporal overlap maintenance ↔ booking | `SpaceMaintenance` period | Open maintenance interval semantics | `SpaceMaintenance` | `completion_time IS NULL` = open-ended `[start_time, ∞)`; interval CHECKs | 10, 12 |
-| Phase 2 §1.1 — advisory notification + acknowledgement | Step 08: `advisory_acknowledged` BIT | Per-advisory acknowledgement snapshot | `BookingAdvisoryAcknowledgement`, R11, R12 | composite PK `(space_booking_id, space_maintenance_id)`; BR-13 | 10, 12, 14 |
-| Phase 2 §1.1 — affected bookings on escalation | (new) | Identification, not auto-cancellation | R8 + SpaceBooking | derived query; BR-14 | 16 |
-| Phase 2 §1.2 — selected space types instant booking | Step 08: "classrooms/auditoriums" | Generic eligibility configuration | `SpaceTypeBookingPolicy`, R13 | `CampusSpace.space_type` FK; `instant_booking_eligible`; BR-11 | 10, 11–13, 14 |
-| Phase 2 §1.2 — automatic vs staff approval | `BookingApproval` (staff only) | Distinguish approval path | `BookingApproval` | `approval_type` CHECK; BR-05 | 10, 12 |
-| Phase 2 §1.2 — approval time / staff / absence of staff | `decision_time`, `staff_id NOT NULL` | `staff_id` nullable for automatic | `BookingApproval` | `(approval_type, staff_id)` consistency CHECK | 12 |
-| Phase 2 §1.2 — consistent status vs decision | implicit | Explicit consistency rule | `BookingApproval`, SpaceBooking | BR-03 trigger/SP rule | 12 |
-| Phase 2 §1.2 — overlap invariant under concurrency, both paths | Phase 1 TRG-01 | Shared protected invariant | SpaceBooking | BR-01/BR-12 transactional stored procedure | 11–13 |
-| Phase 2 §1.3 — report 1 (approved hours per space per semester) | (none) | Semester support | `Semester` entity | `Semester` relation; SpaceBooking interval + status | 14, 16 |
-| Phase 2 §1.3 — report 2 (count by weekday/hour) | (none) | — | `Semester`, SpaceBooking | requested_start_time; status | 14, 16 |
-| Phase 2 §1.3 — report 3 (available spaces with capacity + facilities) | CampusSpace, CampusFacility | interval-based availability | CampusSpace, CampusFacility, SpaceMaintenance, SpaceBooking | derived query | 16 |
-| Phase 2 §1.3 — report 4 (escalation-affected bookings) | (none) | derived, not persisted | SpaceMaintenance, SpaceBooking | BR-14 derived query | 16 |
-
----
+| Phase 2 §1.1 / `new_requirement.md` — maintenance impact levels | `SpaceMaintenance` | Introduce two maintenance impact levels with different booking behaviour | `SpaceMaintenance`, `FacilityMaintenance` | `impact_level` CHECK constraint; BR-02, BR-09 | 10, 11–13 |
+| Phase 2 §1.1 — multiple active maintenance records | R8 | Facility and space maintenance recorded independently | R8, R12 | Independent maintenance rows with no cross-row restriction | 10, 14 |
+| Phase 2 §1.1 — maintenance interval semantics | `SpaceMaintenance` | Open maintenance interval and interval validation | `SpaceMaintenance`, `FacilityMaintenance` | `completion_time` interval constraints | 10, 12 |
+| Phase 2 §1.1 — advisory notification | Advisory requirement | Notify requester when advisory maintenance exists | `FacilityMaintenance`, R12–R14 | `notify_status`; BR-13 | 10, 12, 14 |
+| Phase 2 §1.1 — maintenance escalation | Maintenance workflow | Identify bookings affected by escalation to `out_of_service` | R8 | BR-14 derived query | 16 |
+| Phase 2 §1.2 — selected space types support instant booking | Manual approval workflow | Configurable instant-booking eligibility | `SpaceTypeBookingPolicy`, R11 | `CampusSpace.space_type` FK; `instant_booking_eligible`; BR-11 | 10, 11–13, 14 |
+| Phase 2 §1.2 — automatic versus staff approval | `BookingApproval` | Introduce booking-path indicator while preserving manual approval | `SpaceBooking`, `BookingApproval` | `SpaceBooking.is_instant_booking`; BR-03, BR-05, BR-11 | 10, 12 |
+| Phase 2 §1.2 — booking workflow consistency | `SpaceBooking.status` | Maintain consistent workflow for both approval paths | `SpaceBooking`, `BookingApproval` | BR-03 | 12 |
+| Phase 2 §1.2 — concurrent booking protection | Phase 1 overlap validation | Shared overlap invariant for instant and manual approval | R2, R4, R11 | BR-01, BR-12 | 11–13 |
+| Phase 2 §1.3 — report 1 (approved booking hours per semester) | None | Semester-based reporting | `Semester`, `SpaceBooking` | Semester relation and booking interval | 14, 16 |
+| Phase 2 §1.3 — report 2 (booking count by weekday/hour) | None | Temporal aggregation reporting | `Semester`, `SpaceBooking` | Booking timestamp and semester period | 14, 16 |
+| Phase 2 §1.3 — report 3 (available spaces by capacity and facilities) | `CampusSpace`, `CampusFacility` | Availability derived from bookings, maintenance, and facilities | `CampusSpace`, `CampusFacility`, `SpaceMaintenance`, `FacilityMaintenance`, `SpaceBooking` | Derived query using booking and maintenance intervals | 16 |
+| Phase 2 §1.3 — report 4 (bookings affected by maintenance escalation) | None | Dynamic identification of affected bookings | `SpaceMaintenance`, `SpaceBooking` | BR-14 derived query | 16 |
 
 ## 9. Design Validation Checklist
 
 | # | Check | Result |
 |---|---|---|
-| 1 | All Phase 1 entities preserved unless justified | **PASS** — CampusUser, CampusSpace, CampusFacility, SpaceBooking, BookingApproval, SpaceUsageSession, SpaceMaintenance all retained; SpaceBooking/SpaceUsageSession/CampusUser unchanged |
-| 2 | All new requirements represented | **PASS** — impact levels, acknowledgement, both approval paths, concurrency invariant, four reports all mapped (Sections 7–8) |
-| 3 | Multiple simultaneous advisories supported | **PASS** — multiple `SpaceMaintenance` rows per space with independent intervals/levels; no conflicting constraint |
-| 4 | Per-advisory acknowledgement traceability supported | **PASS** — `BookingAdvisoryAcknowledgement` with composite PK `(space_booking_id, space_maintenance_id)` + `acknowledged_at` |
-| 5 | Maintenance escalation and affected-booking discovery supported | **PASS** — `impact_level` mutable while open; BR-14 derived query over maintenance and booking intervals |
-| 6 | Automatic and staff approval distinguishable and auditable | **PASS** — `BookingApproval.approval_type`, `decision_time`, nullable `staff_id`, status↔decision consistency rule (BR-03, BR-05) |
-| 7 | Overlap invariant defined for both approval paths | **PASS** — BR-01/BR-12 shared invariant; all paths use the same protected operation (Section 6) |
-| 8 | No unsupported selected-space-type assumption | **PASS** — eligibility is config data in `SpaceTypeBookingPolicy`; Step 08 "classrooms/auditoriums" assumption removed |
-| 9 | ERD cardinalities match FKs | **PASS** — R1–R13 each correspond to a declared FK/UK; nullable FKs (R3, R5, R10) shown as optional (`|o`) |
-| 10 | Relation definitions match both diagrams | **PASS** — every entity in the ERD has a relation in §4.1/§4.2; attribute names, types, and markers are consistent |
-| 11 | All relations satisfy at least 3NF at design level | **PASS** — all attributes depend on the full PK; `BookingAdvisoryAcknowledgement` has no non-key dependency on a proper subset; no transitive dependencies introduced (normalization re-validation is scheduled in Phase 2 report) |
-| 12 | Report data requirements are supported | **PASS** — Section 7 covers all four reports with required relations and attributes |
-| 13 | No placeholders or unresolved diagram errors remain | **PASS** — all Mermaid node IDs are referenced; every FK edge has a target PK/UK node; no `int campus_space_code` remains |
-
----
+| 1 | All Phase 1 entities preserved unless justified | **PASS** — All Phase 1 entities (CampusUser, CampusSpace, CampusFacility, SpaceBooking, BookingApproval, SpaceUsageSession, SpaceMaintenance) are retained. Phase 2 only introduces `FacilityMaintenance`, `SpaceTypeBookingPolicy`, and `Semester` where justified by the new requirements. |
+| 2 | All Phase 2 requirements represented | **PASS** — Maintenance impact levels, facility advisory notification, configurable instant booking, concurrent booking protection, and all four analytical reports are represented (Sections 2–8). |
+| 3 | Maintenance impact levels fully supported | **PASS** — `impact_level` distinguishes `out_of_service` and `advisory`; booking behaviour, reporting, and validation rules consistently reference this attribute. |
+| 4 | Facility advisory notification design supported | **PASS** — Advisory notification is represented through `FacilityMaintenance.notify_status`; no redundant acknowledgement relation is introduced. |
+| 5 | Maintenance escalation and affected-booking identification supported | **PASS** — Escalation from `advisory` to `out_of_service` is supported through `impact_level`; BR-14 identifies affected bookings dynamically from maintenance and booking intervals. |
+| 6 | Automatic and staff approval distinguishable and auditable | **PASS** — `SpaceBooking.is_instant_booking` differentiates automatic and manual workflows while `BookingApproval` remains responsible only for staff approvals (BR-03, BR-05, BR-11). |
+| 7 | Concurrency invariant defined for every approval path | **PASS** — BR-01 and BR-12 require the same protected validation logic for instant booking and manual approval (Section 6). |
+| 8 | No unsupported selected-space-type assumption | **PASS** — Instant-booking eligibility is configured through `SpaceTypeBookingPolicy`; no space type is hard-coded, matching the authoritative Phase 2 requirements. |
+| 9 | ERD relationships and foreign keys are consistent | **PASS** — Relationships R1–R14 correspond to the logical schema and foreign-key definitions; nullable foreign keys use correct optional participation. |
+| 10 | ERD, relational schema, and relation definitions are consistent | **PASS** — Every entity in the conceptual ERD appears in the relational schema and detailed relation definitions with matching attributes, keys, and constraints. |
+| 11 | Business Rule Enforcement Map is consistent with the design | **PASS** — BR-01 through BR-14 are traceable to the updated relations, constraints, or deferred implementation artifacts without conflicting definitions. |
+| 12 | Reporting requirements are completely supported | **PASS** — Section 7 demonstrates that all four Phase 2 reports can be derived directly from the updated schema without introducing redundant data. |
+| 13 | Phase 2 traceability is complete | **PASS** — Section 8 traces every Phase 2 requirement from its source requirement through the updated ERD, logical schema, business rules, and downstream implementation artifacts. |
+| 14 | No unresolved design inconsistencies remain | **PASS** — All entity names, relationship IDs, business rules, constraints, and deferred implementation references are internally consistent across Sections 1–8. |
 
 ## 10. Assumptions and Deferred Decisions
 
@@ -732,7 +918,7 @@ Rule identifiers follow Phase 1 (`01-business-req-analysis-G02.md` §6, `03-logi
 
 - `CS486_Project_Phase02.md` and `req/new_requirement.md` are the authoritative sources for Phase 2 changes (Source-Priority Rule, instruction §3).
 - Existing Phase 1 maintenance records migrate with `impact_level = 'out_of_service'` (the Phase 1 behaviour: maintenance blocks booking), which is why the default is `'out_of_service'`.
-- The acknowledging party is the requester acting at submission time; therefore `BookingAdvisoryAcknowledgement` omits `acknowledged_by`, derivable from `SpaceBooking.requester_id`.
+- Advisory notifications are represented through `FacilityMaintenance.notify_status`; the design intentionally does not introduce a separate acknowledgement relation because the Phase 2 requirements only require notification support, not persistent acknowledgement records.
 - The "approved lifecycle" for the overlap invariant and reports is `status IN ('approved','checked_in','completed','no-show')`.
 - A semester is defined by `(academic_year, semester_no)` with a date range; booking-to-semester membership is derived by temporal overlap of the requested interval, so no `semester_id` FK is stored on `SpaceBooking`.
 
@@ -748,7 +934,7 @@ Rule identifiers follow Phase 1 (`01-business-req-analysis-G02.md` §6, `03-logi
 
 - Schema migration DDL, default/backfill strategy, and seeding of `SpaceTypeBookingPolicy` and `Semester` → artifact 10.
 - Locking scheme (range scan with `UPDLOCK`/`HOLDLOCK`, `sp_getapplock`, isolation level) for the overlap invariant and approval paths → artifacts 11–13.
-- Data generator coverage (≥100,000 bookings, advisories, escalations, acknowledgements, cancellations, no-shows) → artifact 14.
+- Data generator coverage (≥100,000 bookings, advisory maintenance, maintenance escalations, notification scenarios, cancellations, and no-shows) → artifact 14.
 - Index strategy (Section 4.3 recommendations) and execution-plan comparisons → artifact 15.
 - Analytical SQL for the four reports → artifact 16.
 - Re-validation of the updated schema against 3NF/BCNF with explicit functional dependencies → Phase 2 report / normalization validation step.
