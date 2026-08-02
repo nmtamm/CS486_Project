@@ -176,7 +176,7 @@ CREATE TABLE SpaceMaintenance (
     CHECK (status IN ('reported', 'in_progress', 'completed', 'cancelled'))
 );
 
-
+GO
 -- ============================================================================
 -- TRIGGERS
 -- ============================================================================
