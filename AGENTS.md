@@ -31,6 +31,8 @@ Do not jump directly to DDL. The documents from the prior steps should be follow
 - `outputs/04-design-validation-G02.md`
 - `outputs/05-db-definition-G02.sql`
 - `outputs/08-requirement-change-analysis-G02.md`
+- `outputs/09-update-erd-and-logical-design-G02.md`
+- `outputs/10-schema-migration-G02.md`
 
 ## DBMS
 
