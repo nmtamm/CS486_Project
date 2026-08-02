@@ -1,4 +1,4 @@
-﻿-- ============================================================================
+-- ============================================================================
 -- Step 10 - Schema Migration: School of Computer Science Space Booking System
 -- Group: G02
 -- DBMS:  Microsoft SQL Server
@@ -73,6 +73,7 @@ CREATE TABLE SpaceTypeBookingPolicy (
     CHECK (space_type IN ('auditorium', 'classroom', 'computer_lab', 'meeting_room')),
     CHECK (instant_booking_eligible IN (0, 1))
 );
+GO
 
 
 -- ----------------------------------------------------------------------------
@@ -95,6 +96,7 @@ CREATE TABLE CampusUser (
     )),
     CHECK (account_status IN ('active', 'inactive', 'suspended'))
 );
+GO
 
 
 -- ----------------------------------------------------------------------------
@@ -123,6 +125,7 @@ CREATE TABLE CampusSpace (
     )),
     CHECK (capacity > 0)
 );
+GO
 
 
 -- ----------------------------------------------------------------------------
@@ -140,6 +143,7 @@ CREATE TABLE CampusFacility (
     FOREIGN KEY (campus_space_code) REFERENCES CampusSpace (campus_space_code),
     CHECK (status IN ('available', 'in_use', 'under_maintenance'))
 );
+GO
 
 
 -- ----------------------------------------------------------------------------
@@ -157,6 +161,7 @@ CREATE TABLE Semester (
     UNIQUE (academic_year, semester_no),
     CHECK (end_date > start_date)
 );
+GO
 
 
 -- ----------------------------------------------------------------------------
@@ -189,6 +194,7 @@ CREATE TABLE SpaceBooking (
     CHECK (expected_participants > 0),
     CHECK (requested_end_time > requested_start_time)
 );
+GO
 
 
 -- ----------------------------------------------------------------------------
@@ -214,6 +220,7 @@ CREATE TABLE BookingApproval (
         (decision = 'approved')
     )
 );
+GO
 
 
 -- ----------------------------------------------------------------------------
@@ -234,6 +241,7 @@ CREATE TABLE SpaceUsageSession (
     FOREIGN KEY (space_booking_id) REFERENCES SpaceBooking (space_booking_id),
     FOREIGN KEY (checked_in_by) REFERENCES CampusUser (campus_user_id)
 );
+GO
 
 
 -- ----------------------------------------------------------------------------
@@ -266,6 +274,7 @@ CREATE TABLE SpaceMaintenance (
     CHECK (status <> 'completed' OR completion_time IS NOT NULL),
     CHECK (status NOT IN ('reported', 'in_progress') OR completion_time IS NULL)
 );
+GO
 
 
 -- ----------------------------------------------------------------------------
@@ -297,6 +306,7 @@ CREATE TABLE FacilityMaintenance (
     CHECK (status <> 'completed' OR completion_time IS NOT NULL),
     CHECK (status NOT IN ('reported', 'in_progress') OR completion_time IS NULL)
 );
+GO
 
 
 -- ============================================================================
@@ -322,6 +332,7 @@ CREATE TABLE FacilityMaintenance (
 -- Trigger Type: AFTER INSERT, UPDATE
 -- On: SpaceBooking
 -- ----------------------------------------------------------------------------
+GO
 CREATE TRIGGER trg_SpaceBooking_StatusTransition
 ON SpaceBooking
 AFTER INSERT, UPDATE
