@@ -16,7 +16,7 @@ outputs/11-concurrency-design-G02.md
 
 This document defines the concurrency control design, transaction boundaries, isolation levels, and locking strategies to prevent race conditions and preserve database invariants under concurrent execution.
 
-The document must identify **at least 2 concurrency errors** in the system, provide SQL reproduction scripts and step-by-step instructions for reproducing each error, and present the complete concurrency control design to prevent them.
+The document must identify **at most 2 concurrency errors** in the system, provide SQL reproduction scripts in **separate SQL files** for each error, and include step-by-step instructions to reproduce them.
 
 ---
 
@@ -43,12 +43,12 @@ The markdown document `outputs/11-concurrency-design-G02.md` must contain the fo
 - Define concurrency control goals: data consistency, transactional isolation, deadlock avoidance, and system correctness during peak concurrency.
 
 ### 2. Concurrency Errors Identification & Reproduction
-Identify **at least 2 specific concurrency errors** (race conditions / invariant violations) that can occur in the system under un-isolated concurrent execution (e.g., double booking under concurrent instant submissions, booking approval during concurrent maintenance escalation).
+Identify **at most 2 specific concurrency errors** (race conditions / invariant violations) that can occur in the system under un-isolated concurrent execution (e.g., double booking under concurrent instant submissions, booking approval during concurrent maintenance escalation).
 
 For **each identified concurrency error**, provide:
 1. **Error Analysis**: Detailed description of the race condition, affected entities, involved business rules (e.g., BR-01, BR-02, BR-12), and business impact.
-2. **SQL Reproduction Scripts**: Complete, runnable T-SQL scripts separated into **Session A** and **Session B** showing the un-isolated interleaved SQL execution steps that trigger the error.
-3. **Step-by-Step Reproduction Instructions**: Clear guidance on how to open two parallel SQL connections in SSMS / sqlcmd, set up initial test data, and execute the interleaved statements in step-by-step order to observe the concurrency failure.
+2. **Separate SQL Reproduction Scripts**: Provide the complete, runnable T-SQL reproduction code in a **separate SQL file** for each error (e.g., Session A and Session B interleaved execution statements).
+3. **Step-by-Step Reproduction Instructions**: Clear guidance on how to open two parallel SQL connections in SSMS / sqlcmd, execute the separate SQL scripts, and run the interleaved statements in step-by-step order to observe the concurrency failure.
 
 ### 3. Isolation Levels & Locking Strategy Design
 Design the database concurrency control model:
@@ -65,5 +65,7 @@ Provide high-level concurrency design specifications for core system operations 
 ---
 
 ## Technical & Scope Constraints
-1. **At Least 2 Concurrency Errors Required**: The document must explicitly identify, document, and provide SQL reproduction scripts and step-by-step instructions for at least 2 distinct concurrency errors.
-2. **Traceability**: Maintain strict alignment with Phase 2 business rules, updated logical schema (`09`), and schema migration (`10`).
+1. **At Most 2 Concurrency Errors Required**: Identify at most 2 distinct concurrency errors.
+2. **Separate SQL Reproduction Files**: Create a separate SQL file for each concurrency error's reproduction script.
+3. **Use Actual Sample Data**: All SQL reproduction scripts **must** use real data from `outputs/06-sample-data-G02.sql`. Use existing `campus_space_code` values (e.g., `'A101'`, `'B201'`, `'B202'`), existing `campus_user_id` values (e.g., `1`–`8`), and valid `purpose_type` / `problem_type` enum values from the Phase 2 schema. **Do NOT invent non-existent space codes, user IDs, or column names.** Always cross-check INSERT column lists against the actual table definitions in `outputs/10-schema-migration-G02.sql`.
+4. **Traceability**: Maintain strict alignment with Phase 2 business rules, updated logical schema (`09`), and schema migration (`10`).
