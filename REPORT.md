@@ -545,3 +545,24 @@ The following business rules are defined in the business requirements but are no
 ## Model Usage
 
 **Big Pickle (from the default provider):** Used as the primary model.
+
+---
+
+# Student Work Report
+
+**Name:** Trịnh Võ Nam Kiệt
+
+**Student ID:** 24125013
+
+**Task:** Step 13 — Concurrency Tests
+
+# Tasks have been done
+
+1. **Created the Step 13 Instruction** (`.opencode/skills/db-design-pipeline/step-13-concurrency-tests/INSTRUCTION.md`) — Defines Concurrency Testing as the step that verifies the Step 12 implementation by re-running the Step 11 race interleavings through the implemented procedures and confirming the guards prevent the violations. Registered the outputs in the master skill (`SKILL.md` — required-output list + steps table).
+2. **Test plan** — Generates `outputs/13-concurrency-tests-G02.md` first, documenting the objective, reference files, a test matrix mapping each concurrency error to its invariant and expected outcome, test results, and run instructions.
+3. **Test script** — Generates `outputs/13-concurrency-tests-G02.sql` on top of the md, a single executable file with one test section per concurrency error that calls the Step 12 procedures and asserts the invariant holds.
+4. **Deterministic testing** — Requires each test to be deterministic: a pass must mean the guard prevented the violation, not that the race happened not to occur. Failures are reported honestly rather than weakening assertions.
+
+## Model Usage
+
+**Big Pickle (from the default provider):** Used as the primary model.

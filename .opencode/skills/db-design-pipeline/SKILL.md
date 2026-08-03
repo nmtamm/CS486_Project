@@ -67,6 +67,8 @@ Create or update the following files:
 10. `outputs/11-concurrency-design-G02.md`
 11. `outputs/12-concurrency-implementation-G02.sql`
 12. `outputs/12-concurrency-implementation-G02.md`
+13. `outputs/13-concurrency-tests-G02.md`
+14. `outputs/13-concurrency-tests-G02.sql`
 
 Do not skip any Markdown or SQL file.
 
@@ -87,3 +89,4 @@ Do not skip any Markdown or SQL file.
 | 10 | [Schema Migration](step-10-schema-migration/INSTRUCTION.md) |
 | 11 | [Concurrency Design](step-11-concurrency-design/INSTRUCTION.md) |
 | 12 | [Concurrency Implementation](step-12-concurrency-implementation/INSTRUCTION.md) |
+| 13 | [Concurrency Tests](step-13-concurrency-tests/INSTRUCTION.md) |
