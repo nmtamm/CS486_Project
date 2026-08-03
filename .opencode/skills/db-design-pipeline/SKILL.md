@@ -65,6 +65,8 @@ Create or update the following files:
 8. `outputs/09-updated-erd-and-logical-design-G02.md`
 9. `outputs/10-schema-migration-G02.sql`
 10. `outputs/11-concurrency-design-G02.md`
+11. `outputs/12-concurrency-implementation-G02.sql`
+12. `outputs/12-concurrency-implementation-G02.md`
 
 Do not skip any Markdown or SQL file.
 
@@ -84,3 +86,4 @@ Do not skip any Markdown or SQL file.
 | 9 | [Updated ERD and Logical Design](step-09-updated-erd-and-logical-design/INSTRUCTION.md) |
 | 10 | [Schema Migration](step-10-schema-migration/INSTRUCTION.md) |
 | 11 | [Concurrency Design](step-11-concurrency-design/INSTRUCTION.md) |
+| 12 | [Concurrency Implementation](step-12-concurrency-implementation/INSTRUCTION.md) |
