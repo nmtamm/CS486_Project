@@ -481,3 +481,88 @@ The following business rules are defined in the business requirements but are no
 ## Model Usage
 
 **Big Pickle (from the default provider):** Used as the primary model.
+
+---
+
+# Student Work Report
+
+**Name:** Võ Huy Dâng
+
+**Student ID:** 20125022
+
+**Task:** Schema Migration SQL Testing & T-SQL Pipeline Rules
+
+# Task have been done
+
+1. **Executed and Tested SQL Migration Scripts** — Ran and verified `outputs/05-db-definition-G02.sql` and `outputs/10-schema-migration-G02.sql` against MS SQL Server to validate DDL execution and data migration statements.
+2. **Fixed T-SQL Batch Compilation Issues** — Identified query batching errors caused by missing `GO` statements. Refined `outputs/05-db-definition-G02.sql` and `outputs/10-schema-migration-G02.sql` by adding mandatory `GO` batch separators after all `CREATE TABLE` blocks and immediately preceding `CREATE TRIGGER` definitions.
+3. **Updated Master Skill Guidelines (`.opencode/skills/db-design-pipeline/SKILL.md`)** — Added explicit T-SQL Scripting Rules for Microsoft SQL Server, enforcing `GO` batch separators before `CREATE TRIGGER`/`CREATE PROCEDURE` blocks and after `CREATE TABLE` definitions across all pipeline steps.
+4. **Verified Post-Migration Data Integrity** — Confirmed clean execution of schema migration (`SpaceBookingDB_Phase2`) and post-migration validation queries (row counts, foreign key integrity, duplicate key checks).
+
+## Model Usage
+
+**Big Pickle (from the default provider):** Used as the primary model.
+
+---
+
+# Student Work Report
+
+**Name:** Võ Huy Dâng
+
+**Student ID:** 20125022
+
+**Task:** Step 11 — Concurrency Design
+
+# Tasks have been done
+
+1. **Updated Step 11 Instruction** — Added constraint requiring all SQL reproduction scripts to use actual sample data from `outputs/06-sample-data-G02.sql` (real space codes, user IDs, and valid enum values). Explicitly prohibited inventing non-existent column names or space codes. Added requirement to cross-check INSERT column lists against the Phase 2 schema in `outputs/10-schema-migration-G02.sql`.
+2. **Produced Concurrency Design Document** (`outputs/11-concurrency-design-G02.md`) — Covers system invariants (BR-01/BR-12 overlap prevention, BR-02/BR-09 maintenance blocking, BR-13 advisory notification, BR-03/BR-07 lifecycle/capacity), isolation level evaluation (`READ COMMITTED`, `REPEATABLE READ`, `SERIALIZABLE`, `SNAPSHOT`), chosen hybrid pessimistic locking model (`sp_getapplock` + `UPDLOCK, HOLDLOCK`), lock acquisition hierarchy, and transaction specifications for three core procedures (`sp_SubmitSpaceBooking`, `sp_ApproveSpaceBooking`, `sp_EscalateSpaceMaintenance`).
+3. **Produced Concurrency Error 1 Reproduction Script** (`outputs/11-reproduce-concurrency-error1-G02.sql`) — Demonstrates double-allocation race condition on classroom `B201` (Lecture Room 201, capacity 60) using User 4 (lecturer) and User 5 (student) from the sample data.
+4. **Produced Concurrency Error 2 Reproduction Script** (`outputs/11-reproduce-concurrency-error2-G02.sql`) — Demonstrates staff approval vs. maintenance escalation race condition on auditorium `A101` (Main Auditorium, capacity 200) using User 2, User 3 (facility_staff), User 4 (lecturer), and User 5 (student) from the sample data.
+5. **Schema Alignment Validation** — Verified all INSERT column lists in the reproduction scripts match the actual Phase 2 `SpaceBooking` and `SpaceMaintenance` table definitions. Confirmed that `advisory_acknowledged` column (proposed in Step 08 but not implemented in Step 09/10 schema) is not referenced anywhere. Confirmed BR-13 advisory notification uses `FacilityMaintenance.notify_status` per the Step 09 logical design.
+
+## Model Usage
+
+**Big Pickle (from the default provider):** Used as the primary model.
+
+---
+
+# Student Work Report
+
+**Name:** Trịnh Võ Nam Kiệt
+
+**Student ID:** 24125013
+
+**Task:** Step 12 — Concurrency Implementation
+
+# Tasks have been done
+
+1. **Created the Step 12 Instruction** (`.opencode/skills/db-design-pipeline/step-12-concurrency-implementation/INSTRUCTION.md`) — Defines Concurrency Implementation as a generic step that turns the Step 11 design into runnable T-SQL. Registered the outputs in the master skill (`SKILL.md` — required-output list + steps table).
+2. **Scoped verification out of Step 12** — Moved testing to **Step 13** (`13-concurrency-tests-*`): Step 12 only produces the procedures and documents how each concurrency error is designed to be prevented; confirming the guards actually prevent them is not done here.
+3. **Analytical process** — Generates `outputs/12-concurrency-implementation-G02.md` first, documenting the objective, reference files, implemented procedures, how each concurrency error is prevented, and run instructions.
+4. **Procedure implementation** — Generates `outputs/12-concurrency-implementation-G02.sql` on top of the md, translating each transaction specification in the design document into working stored procedures for the target database.
+
+## Model Usage
+
+**Big Pickle (from the default provider):** Used as the primary model.
+
+---
+
+# Student Work Report
+
+**Name:** Trịnh Võ Nam Kiệt
+
+**Student ID:** 24125013
+
+**Task:** Step 13 — Concurrency Tests
+
+# Tasks have been done
+
+1. **Created the Step 13 Instruction** (`.opencode/skills/db-design-pipeline/step-13-concurrency-tests/INSTRUCTION.md`) — Defines Concurrency Testing as the step that verifies the Step 12 implementation by re-running the Step 11 race interleavings through the implemented procedures and confirming the guards prevent the violations. Registered the outputs in the master skill (`SKILL.md` — required-output list + steps table).
+2. **Test plan** — Generates `outputs/13-concurrency-tests-G02.md` first, documenting the objective, reference files, a test matrix mapping each concurrency error to its invariant and expected outcome, test results, and run instructions.
+3. **Test script** — Generates `outputs/13-concurrency-tests-G02.sql` on top of the md, a single executable file with one test section per concurrency error that calls the Step 12 procedures and asserts the invariant holds.
+4. **Deterministic testing** — Requires each test to be deterministic: a pass must mean the guard prevented the violation, not that the race happened not to occur. Failures are reported honestly rather than weakening assertions.
+
+## Model Usage
+
+**Big Pickle (from the default provider):** Used as the primary model.
