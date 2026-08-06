@@ -566,3 +566,19 @@ The following business rules are defined in the business requirements but are no
 ## Model Usage
 
 **Big Pickle (from the default provider):** Used as the primary model.
+
+---
+
+# Student Work Report
+
+**Name:** Trịnh Võ Nam Kiệt
+
+**Student ID:** 24125013
+
+**Task:** Normalization Validation
+
+## Tasks have been done
+
+1. **Validated the Phase 2 schema normalization** — Reviewed all ten tables in `outputs/10-schema-migration-G02.sql` against 1NF, 2NF, 3NF, and BCNF requirements.
+2. **Documented functional dependencies and candidate keys** — Created `NORMAL.md` with per-table functional dependencies and normalization justifications.
+3. **Confirmed the overall result** — Determined that all ten tables satisfy BCNF under the functional dependencies supported by the SQL schema.
