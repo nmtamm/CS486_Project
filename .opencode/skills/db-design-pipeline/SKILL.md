@@ -69,6 +69,8 @@ Create or update the following files:
 12. `outputs/12-concurrency-implementation-G02.md`
 13. `outputs/13-concurrency-tests-G02.md`
 14. `outputs/13-concurrency-tests-G02.sql`
+15. `outputs/15-index-tuning-G02.sql`
+16. `outputs/15-index-tuning-G02.md`
 
 Do not skip any Markdown or SQL file.
 
@@ -90,3 +92,4 @@ Do not skip any Markdown or SQL file.
 | 11 | [Concurrency Design](step-11-concurrency-design/INSTRUCTION.md) |
 | 12 | [Concurrency Implementation](step-12-concurrency-implementation/INSTRUCTION.md) |
 | 13 | [Concurrency Tests](step-13-concurrency-tests/INSTRUCTION.md) |
+| 15 | [Index Tuning](step-15-index-tuning/INSTRUCTION.md) |
