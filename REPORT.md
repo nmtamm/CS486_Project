@@ -566,3 +566,22 @@ The following business rules are defined in the business requirements but are no
 ## Model Usage
 
 **Big Pickle (from the default provider):** Used as the primary model.
+
+---
+
+# Student Work Report
+
+**Name:** Trần Trung Hậu
+
+**Student ID:** 24125055
+
+**Task:** Step 16 — Analytical Queries
+
+# Tasks have been done (manually)
+
+Implement required queries for necessary reporting:
+
+1. AQ-01 Total approved booking hours of each space for a given semester.
+2. AQ-02 Number of approved bookings by weekday and hour for a semester.
+3. AQ-03 Available spaces satisfying capacity and required facilities.
+4. AQ-04 Approved bookings affected by out-of-service maintenance (if the maintenance is escalated to out-of-service).
