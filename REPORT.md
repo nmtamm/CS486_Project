@@ -592,3 +592,24 @@ The following business rules are defined in the business requirements but are no
    - The logic is the same as trigger for SpaceMaintenance
 6. Add trigger to only allow booking on available spaces
 7. Add trigger to synchronize BookingApproval with SpaceBooking
+
+---
+
+**Name:** Võ Huy Dâng
+
+**Student ID:** 20125022
+
+**Task:** Step 14 — Sample Data Generation (`14-data-generator-G02`)
+
+# Tasks have been done
+
+1. **Created Data Generator Skill Instruction (`.opencode/skills/db-design-pipeline/step-14-data-generator/INSTRUCTION.md`)** — Defined step instructions, dependency graph, prerequisite reference selection rules, scale estimations, and execution flow. Updated master pipeline skill (`.opencode/skills/db-design-pipeline/SKILL.md`) to register `outputs/14-data-generator-G02/` and Step 14 in the steps table.
+2. **Created Database Data Reset Script (`outputs/14-data-generator-G02/reset_database_data.sql`)** — T-SQL script to safely clear all rows in database tables in strict reverse Foreign Key dependency order (`FacilityMaintenance` -> `SpaceMaintenance` -> `SpaceUsageSession` -> `BookingApproval` -> `SpaceBooking` -> `CampusFacility` -> `CampusSpace` -> `SpaceTypeBookingPolicy` -> `CampusUser` -> `Semester`) and reseed IDENTITY counters to 0.
+3. **Created Connection Diagnostic Script (`outputs/14-data-generator-G02/test_db_connection.py`)** — Python diagnostic script using `pyodbc` to verify connection parameters to MS SQL Server database `SpaceBookingDB_Phase2` and validate schema readiness across all 10 tables.
+4. **Created Bulk Sample Data Generator Script (`outputs/14-data-generator-G02/generate_bulk_data.py`)** — Python generator script that populates prerequisite master data (9 semesters, 2,500 users, 60 spaces, 180 facilities, 1,500 maintenance records) and generates **100,000 `SpaceBooking` records**, **~50,000 `BookingApproval` records**, and **~50,000 `SpaceUsageSession` records** across 3 academic years (2023–2026). Temporarily disables status transition triggers during bulk ingestion (`ALTER TABLE SpaceBooking DISABLE TRIGGER ALL;`) and executes high-throughput bulk inserts (`fast_executemany`) in ~10 seconds.
+5. **Created Verification Script (`outputs/14-data-generator-G02/verify_data_integrity.sql`)** — T-SQL script validating table row counts, foreign key integrity (0 orphans), workflow consistency, and zero schedule overlaps on approved/completed bookings.
+6. **Created Step 14 Documentation (`outputs/14-data-generator-G02/README.md`)** — Comprehensive user documentation covering python virtual environment setup (`py -m venv .venv`), dependency installation (`pip install pyodbc faker`), `SpaceBookingDB_Phase2` connection settings, and step-by-step execution instructions.
+
+## Model Usage
+
+**Gemini 3.6 Flash (High):** Used as the primary model.
