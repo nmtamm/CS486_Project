@@ -264,69 +264,104 @@ GO
 --
 -- Target user: Facility Staff / Facility Manager
 -- Purpose:
--- Lists approved bookings whose requested intervals overlap the selected
--- out-of-service maintenance interval, so staff can contact requesters.
---
--- Schema limitation:
--- SpaceMaintenance stores the current impact_level but no impact-level history
--- or escalation timestamp. Therefore the query accepts the maintenance record
--- selected by the caller immediately after escalation and reports its currently
--- affected approved bookings. Historical proof of when escalation occurred is
--- not available from this schema alone.
+-- Find approved bookings affected by either:
+--   1. SpaceMaintenance escalated to out_of_service, or
+--   2. FacilityMaintenance escalated to out_of_service.
 -- ============================================================================
-DECLARE @AQ04_MaintenanceId INT = 1;
 
-;WITH EscalatedMaintenance AS (
+DECLARE @SpaceMaintenanceId INT = NULL;
+DECLARE @FacilityMaintenanceId INT = NULL;
+
+;WITH AffectedMaintenance AS (
+
+    -- 1. Space-level maintenance
     SELECT
-        sm.space_maintenance_id,
+        'SPACE' AS maintenance_type,
+        sm.space_maintenance_id AS maintenance_id,
         sm.campus_space_code,
+        CAST(NULL AS INT) AS campus_facility_id,
+        CAST(NULL AS NVARCHAR(100)) AS facility_type,
         sm.problem_description,
         sm.start_time AS maintenance_start,
-        COALESCE(sm.completion_time, CONVERT(DATETIME2, '9999-12-31'))
-            AS maintenance_end
+        sm.completion_time AS maintenance_end
     FROM SpaceMaintenance sm
-    WHERE sm.space_maintenance_id = @AQ04_MaintenanceId
-      AND sm.impact_level = 'advisory'
-      AND sm.status IN ('reported', 'in_progress')
+    WHERE sm.status IN ('reported', 'in_progress')
+      AND sm.space_maintenance_id = @SpaceMaintenanceId
+          
+
+    UNION ALL
+
+    -- 2. Facility-level maintenance
+    SELECT
+        'FACILITY' AS maintenance_type,
+        fm.facility_maintenance_id AS maintenance_id,
+        cf.campus_space_code,
+        fm.campus_facility_id,
+        cf.facility_type,
+        fm.problem_description,
+        fm.start_time AS maintenance_start,
+        fm.completion_time AS maintenance_end
+    FROM FacilityMaintenance fm
+    JOIN CampusFacility cf
+        ON cf.campus_facility_id = fm.campus_facility_id
+    WHERE fm.status IN ('reported', 'in_progress')
+      AND cf.campus_space_code IS NOT NULL
+      AND fm.facility_maintenance_id = @FacilityMaintenanceId
 )
+
 SELECT
-    em.space_maintenance_id,
-    em.campus_space_code,
+    am.maintenance_type,
+    am.maintenance_id,
+
+    am.campus_space_code,
     cs.space_name,
-    em.problem_description,
-    em.maintenance_start,
-    NULLIF(em.maintenance_end, CONVERT(DATETIME2, '9999-12-31'))
-        AS maintenance_end,
+
+    am.campus_facility_id,
+    am.facility_type,
+
+    am.problem_description,
+    am.maintenance_start,
+    am.maintenance_end,
+
     sb.space_booking_id,
     sb.requester_id,
     cu.full_name AS requester_name,
     cu.email AS requester_email,
+
     sb.requested_start_time,
     sb.requested_end_time,
     sb.purpose_type,
     sb.status,
     sb.is_instant_booking
-FROM EscalatedMaintenance em
+
+FROM AffectedMaintenance am
+
 JOIN CampusSpace cs
-    ON cs.campus_space_code = em.campus_space_code
+    ON cs.campus_space_code = am.campus_space_code
+
 JOIN SpaceBooking sb
-    ON sb.campus_space_code = em.campus_space_code
-   AND sb.requested_start_time < em.maintenance_end
-   AND sb.requested_end_time > em.maintenance_start
+    ON sb.campus_space_code = am.campus_space_code
+
+    -- Booking and maintenance intervals overlap
+    AND sb.requested_start_time <
+        COALESCE(
+            am.maintenance_end,
+            CONVERT(DATETIME2, '9999-12-31')
+        )
+
+    AND sb.requested_end_time > am.maintenance_start
+
 JOIN CampusUser cu
     ON cu.campus_user_id = sb.requester_id
-WHERE sb.status IN ('approved', 'checked_in', 'completed', 'no-show')
-  AND (
-        sb.is_instant_booking = 1
-        OR EXISTS (
-            SELECT 1
-            FROM BookingApproval ba
-            WHERE ba.space_booking_id = sb.space_booking_id
-              AND ba.decision = 'approved'
-        )
-      )
-ORDER BY
-    sb.requested_start_time,
-    sb.space_booking_id;
-GO
 
+WHERE sb.status IN (
+        'approved',
+        'checked_in',
+        'completed',
+        'no-show'
+    )
+
+ORDER BY
+    am.maintenance_type,
+    am.maintenance_id,
+    sb.requested_start_time;
