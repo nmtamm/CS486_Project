@@ -245,7 +245,9 @@ GO
 
 
 -- ----------------------------------------------------------------------------
--- 1.9 SPACE MAINTENANCE  (modified - new impact_level; problem_type domain
+-- 1.9 SPACE MAINTENANCE  (modified - new impact_level; new notify_status
+--     mirroring FacilityMaintenance (09 Section 4.2) and maintained by
+--     trg_SpaceMaintenance_UpdateSpaceStatus (Section 2); problem_type domain
 --     reduced; maintenance interval consistency rules)
 -- ----------------------------------------------------------------------------
 CREATE TABLE SpaceMaintenance (
@@ -259,6 +261,7 @@ CREATE TABLE SpaceMaintenance (
     start_time           DATETIME2     NOT NULL DEFAULT GETDATE(),
     completion_time      DATETIME2     NULL,
     status               NVARCHAR(20)  NOT NULL DEFAULT 'reported',
+    notify_status        NVARCHAR(40)  NOT NULL DEFAULT 'nothing_to_notify',
     result_note          NVARCHAR(MAX) NULL,
 
     PRIMARY KEY (space_maintenance_id),
@@ -270,6 +273,9 @@ CREATE TABLE SpaceMaintenance (
         'ac_failure', 'damaged_furniture', 'cleaning', 'network', 'other'
     )),
     CHECK (status IN ('reported', 'in_progress', 'completed', 'cancelled')),
+    CHECK (notify_status IN (
+        'nothing_to_notify', 'updated_to_advisory', 'updated_to_out_of_service'
+    )),
     CHECK (completion_time IS NULL OR completion_time > start_time),
     CHECK (status <> 'completed' OR completion_time IS NOT NULL),
     CHECK (status NOT IN ('reported', 'in_progress') OR completion_time IS NULL)
@@ -308,27 +314,93 @@ CREATE TABLE FacilityMaintenance (
 );
 GO
 
+-----------------------------------------------------------------------------
+-- 1. If there is any active out_of_maintenance in SpaceMaintenance or FacilityMaintenance for the space, set CampusSpace.current_status = 'under_maintenance' (unless it is 'temporarily_closed' or 'retired').
+-- 2. If there is no active out_of_maintenance in either table for the space, set CampusSpace.current_status = 'available' (unless it is 'temporarily_closed' or 'retired').
+-----------------------------------------------------------------------------
+
+CREATE FUNCTION fn_IsSpaceUnderMaintenance
+(
+    @CampusSpaceCode NVARCHAR(50)
+)
+RETURNS BIT
+AS
+BEGIN
+    IF EXISTS
+    (
+        SELECT 1
+        FROM SpaceMaintenance
+        WHERE campus_space_code = @CampusSpaceCode
+          AND status IN ('reported','in_progress')
+          AND impact_level = 'out_of_service'
+    )
+        RETURN 1;
+
+    IF EXISTS
+    (
+        SELECT 1
+        FROM FacilityMaintenance fm
+        JOIN CampusFacility cf
+             ON fm.campus_facility_id = cf.campus_facility_id
+        WHERE cf.campus_space_code = @CampusSpaceCode
+          AND fm.status IN ('reported','in_progress')
+          AND fm.impact_level = 'out_of_service'
+    )
+        RETURN 1;
+
+    RETURN 0;
+END;
+GO
+
+-----------------------------------------------------------------------------
+-- 1. Check if a spcae is retired or temporarily closed
+-- 2. Check if there is any active out_of_maintenance in SpaceMaintenance or FacilityMaintenance for the space during the requested period.
+-----------------------------------------------------------------------------
+
+CREATE FUNCTION fn_IsSpaceAvailable
+(
+    @CampusSpaceCode NVARCHAR(50),
+    @RequestedStartTime DATETIME2,
+    @RequestedEndTime DATETIME2
+)
+RETURNS BIT
+AS
+BEGIN
+    DECLARE @Available BIT = 1;
+
+    -- Space must not be retired or temporarily closed
+    IF NOT EXISTS
+    (
+        SELECT 1
+        FROM CampusSpace
+        WHERE campus_space_code = @CampusSpaceCode
+          AND current_status NOT IN ('retired', 'temporarily_closed')
+    )
+    BEGIN
+        RETURN 0;
+    END;
+
+    -- Space and its facilities must not have any active out_of_service maintenance during the requested period
+    IF dbo.fn_IsSpaceUnderMaintenance(@CampusSpaceCode) = 1
+    BEGIN
+        RETURN 0;
+    END;
+
+    RETURN 1;
+END;
+GO
 
 -- ============================================================================
 -- 2. CONSTRAINT CREATION - TRIGGERS
 -- (CHECK constraints are declared inline above, per the updated design.)
---
--- Scope decision (09 Section 4.3, Section 5, Section 6):
---   * BR-03 (status transitions) and BR-07 (capacity) are trigger-enforceable
---     and are created here.
---   * BR-01/BR-12 (overlap invariant) and BR-02/BR-09 (maintenance blocking)
---     are explicitly deferred to the concurrency implementation (Steps 11-13)
---     and are intentionally NOT created in this migration.
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
--- TRG-02: Validate booking status transitions (BR-03)
--- INSERT rule extended for Phase 2 (BR-11):
---   staff workflow -> status must be 'pending'
---   instant booking -> status must be 'approved' at submission
--- UPDATE flow (unchanged): pending -> approved/rejected/cancelled
---                           approved -> checked_in
---                           checked_in -> completed/no-show
+-- TRG-01: Validate booking status transitions (BR-03)
+-- Workflow:
+-- 1. On INSERT, ensure that staff bookings enter as 'pending' and instant bookings as 'approved'.
+-- 2. On INSERT, ensure that an instant booking is only inserted for a space type configured as instant-booking eligible (BR-11).
+-- 3. On UPDATE, validate that the status transition is allowed per the defined workflow.
 -- Trigger Type: AFTER INSERT, UPDATE
 -- On: SpaceBooking
 -- ----------------------------------------------------------------------------
@@ -340,39 +412,91 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    -- INSERT check: staff bookings enter as 'pending'; instant bookings as 'approved'
     IF EXISTS (
-        SELECT 1 FROM inserted i
+        SELECT 1
+        FROM inserted i
         WHERE NOT EXISTS (SELECT 1 FROM deleted)
           AND NOT (
-                (i.status = 'pending'   AND i.is_instant_booking = 0)
-             OR (i.status = 'approved'  AND i.is_instant_booking = 1)
-              )
+                (i.status = 'pending'  AND i.is_instant_booking = 0)
+             OR (i.status = 'approved' AND i.is_instant_booking = 1)
+          )
     )
     BEGIN
-        RAISERROR('BR-03 violation: New booking status must be ''pending'' (staff workflow) or ''approved'' (instant booking).', 16, 1);
+        RAISERROR(
+            'BR-03 violation: New booking status must be ''pending'' (staff workflow) or ''approved'' (instant booking).',
+            16,
+            1
+        );
         ROLLBACK TRANSACTION;
         RETURN;
     END;
 
-    -- UPDATE check: validate status transition
+    IF EXISTS (
+        SELECT 1
+        FROM inserted i
+        JOIN CampusSpace cs
+            ON i.campus_space_code = cs.campus_space_code
+        LEFT JOIN SpaceTypeBookingPolicy p
+            ON cs.space_type = p.space_type
+        WHERE NOT EXISTS (SELECT 1 FROM deleted)
+          AND i.is_instant_booking = 1
+          AND (p.space_type IS NULL OR p.instant_booking_eligible = 0)
+    )
+    BEGIN
+        RAISERROR(
+            'BR-11 violation: Instant booking requires the space type to be configured as instant-booking eligible.',
+            16,
+            1
+        );
+        ROLLBACK TRANSACTION;
+        RETURN;
+    END;
+
+    IF EXISTS (
+        SELECT 1
+        FROM inserted i
+        WHERE dbo.fn_IsSpaceAvailable
+        (
+            i.campus_space_code,
+            i.requested_start_time,
+            i.requested_end_time
+        ) = 0
+    )
+    BEGIN
+        RAISERROR(
+            N'BR-02/BR-09 violation: The selected space is unavailable for the requested period.',
+            16,
+            1
+        );
+
+        ROLLBACK TRANSACTION;
+        RETURN;
+    END;
+
     IF UPDATE(status)
     BEGIN
+
         IF EXISTS (
             SELECT 1
             FROM inserted i
-            JOIN deleted d ON i.space_booking_id = d.space_booking_id
+            JOIN deleted d
+                ON i.space_booking_id = d.space_booking_id
             WHERE i.status <> d.status
               AND NOT (
-                  (d.status = 'pending' AND i.status IN ('approved', 'rejected', 'cancelled'))
-                  OR
-                  (d.status = 'approved' AND i.status = 'checked_in')
-                  OR
-                  (d.status = 'checked_in' AND i.status IN ('completed', 'no-show'))
+                    (d.status = 'pending'
+                     AND i.status IN ('approved','rejected','cancelled'))
+                 OR (d.status = 'approved'
+                     AND i.status = 'checked_in')
+                 OR (d.status = 'checked_in'
+                     AND i.status IN ('completed','no-show'))
               )
         )
         BEGIN
-            RAISERROR('BR-03 violation: Invalid booking status transition.', 16, 1);
+            RAISERROR(
+                'BR-03 violation: Invalid booking status transition.',
+                16,
+                1
+            );
             ROLLBACK TRANSACTION;
             RETURN;
         END;
@@ -380,9 +504,8 @@ BEGIN
 END;
 GO
 
-
 -- ----------------------------------------------------------------------------
--- TRG-03: Prevent expected_participants exceeding space capacity (BR-07)
+-- TRG-02: Prevent expected_participants exceeding space capacity (BR-07)
 -- Trigger Type: AFTER INSERT, UPDATE
 -- On: SpaceBooking
 -- ----------------------------------------------------------------------------
@@ -407,14 +530,10 @@ BEGIN
 END;
 GO
 
-
 -- ----------------------------------------------------------------------------
--- TRG-04: Auto-update CampusSpace.current_status on maintenance changes
--- Refined for Phase 2 impact levels: only active maintenance with
--- impact_level = 'out_of_service' marks the space as 'under_maintenance';
--- advisory maintenance does not make the space unavailable.
--- CampusSpace.current_status remains a convenience attribute (09 Section 3.2);
--- booking availability is derived from maintenance intervals.
+-- TRG-03: Auto-update CampusSpace.current_status on maintenance changes
+-- Workflow:
+-- Update SpaceMaintenance.notify_status based on the record's own status and impact_level:
 -- Trigger Type: AFTER INSERT, UPDATE
 -- On: SpaceMaintenance
 -- ----------------------------------------------------------------------------
@@ -425,45 +544,191 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    -- Active out-of-service maintenance => space under maintenance
     UPDATE cs
     SET current_status = 'under_maintenance'
     FROM CampusSpace cs
-    JOIN inserted i ON cs.campus_space_code = i.campus_space_code
-    WHERE i.status IN ('reported', 'in_progress')
-      AND i.impact_level = 'out_of_service'
-      AND cs.current_status NOT IN ('temporarily_closed', 'retired');
+    WHERE cs.current_status NOT IN ('temporarily_closed', 'retired')
+      AND EXISTS (
+          SELECT 1
+          FROM inserted i
+          WHERE i.campus_space_code = cs.campus_space_code
+      )
+      AND dbo.fn_IsSpaceUnderMaintenance(cs.campus_space_code) = 1;
 
-    -- Restore the space when no active out-of-service maintenance remains
     UPDATE cs
     SET current_status = 'available'
     FROM CampusSpace cs
-    JOIN inserted i ON cs.campus_space_code = i.campus_space_code
     WHERE cs.current_status = 'under_maintenance'
-      AND NOT EXISTS (
+      AND EXISTS (
           SELECT 1
-          FROM SpaceMaintenance sm
-          WHERE sm.campus_space_code = i.campus_space_code
-            AND sm.status IN ('reported', 'in_progress')
-            AND sm.impact_level = 'out_of_service'
-      );
+          FROM inserted i
+          WHERE i.campus_space_code = cs.campus_space_code
+      )
+      AND dbo.fn_IsSpaceUnderMaintenance(cs.campus_space_code) = 0;
+
+    -- Keep SpaceMaintenance.notify_status consistent with the maintenance
+    -- record's workflow status and impact level.
+    UPDATE sm
+    SET notify_status = v.new_notify_status
+    FROM SpaceMaintenance sm
+    JOIN (
+        SELECT i.space_maintenance_id,
+               CASE
+                   WHEN i.status IN (N'reported', N'in_progress')
+                    AND i.impact_level = N'out_of_service'
+                        THEN N'updated_to_out_of_service'
+                   WHEN i.status IN (N'reported', N'in_progress')
+                    AND i.impact_level = N'advisory'
+                        THEN N'updated_to_advisory'
+                   WHEN i.status IN (N'completed', N'cancelled')
+                        THEN N'nothing_to_notify'
+                   ELSE i.notify_status
+               END AS new_notify_status
+        FROM inserted i
+    ) v ON sm.space_maintenance_id = v.space_maintenance_id
+    WHERE sm.notify_status <> v.new_notify_status;
 END;
 GO
 
+-- ----------------------------------------------------------------------------
+-- TRG-04: Auto-update CampusSpace.current_status on facility maintenance changes
+-- Workflow:
+-- 3. Update FacilityMaintenance.notify_status based on the record's own status and impact_level:
+-- The WHERE clause guards against re-firing on the same row (no-op update).
+-- Trigger Type: AFTER INSERT, UPDATE
+-- On: FacilityMaintenance
+-- ----------------------------------------------------------------------------
+CREATE TRIGGER trg_FacilityMaintenance_UpdateSpaceStatus
+ON FacilityMaintenance
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
 
--- ============================================================================
+    UPDATE cs
+    SET current_status = 'under_maintenance'
+    FROM CampusSpace cs
+    WHERE cs.current_status NOT IN ('temporarily_closed', 'retired')
+      AND EXISTS (
+          SELECT 1
+          FROM inserted i
+          JOIN CampusFacility cf ON i.campus_facility_id = cf.campus_facility_id
+          WHERE cf.campus_space_code = cs.campus_space_code
+      )
+      AND dbo.fn_IsSpaceUnderMaintenance(cs.campus_space_code) = 1;
+
+    -- Restore the space only when NO active out-of-service maintenance remains
+    -- from EITHER source.
+    UPDATE cs
+    SET current_status = 'available'
+    FROM CampusSpace cs
+    WHERE cs.current_status = 'under_maintenance'
+      AND EXISTS (
+          SELECT 1
+          FROM inserted i
+          JOIN CampusFacility cf ON i.campus_facility_id = cf.campus_facility_id
+          WHERE cf.campus_space_code = cs.campus_space_code
+      )
+      AND dbo.fn_IsSpaceUnderMaintenance(cs.campus_space_code) = 0;
+    -- Keep FacilityMaintenance.notify_status consistent with the maintenance
+    -- record's workflow status and impact level.
+    UPDATE fm
+    SET notify_status = v.new_notify_status
+    FROM FacilityMaintenance fm
+    JOIN (
+        SELECT i.facility_maintenance_id,
+               CASE
+                   WHEN i.status IN (N'reported', N'in_progress')
+                    AND i.impact_level = N'out_of_service'
+                        THEN N'updated_to_out_of_service'
+                   WHEN i.status IN (N'reported', N'in_progress')
+                    AND i.impact_level = N'advisory'
+                        THEN N'updated_to_advisory'
+                   WHEN i.status IN (N'completed', N'cancelled')
+                        THEN N'nothing_to_notify'
+                   ELSE i.notify_status
+               END AS new_notify_status
+        FROM inserted i
+    ) v ON fm.facility_maintenance_id = v.facility_maintenance_id
+    WHERE fm.notify_status <> v.new_notify_status;
+END;
+GO
+
+-- ----------------------------------------------------------------------------
+-- TRG-05: Keep SpaceBooking.status consistent with BookingApproval.decision
+-- Workflow:
+-- 1. If a new BookingApproval record is inserted or an existing one is updated, update the corresponding SpaceBooking.status to match the decision ('approved' or 'rejected').
+-- Trigger Type: AFTER INSERT, UPDATE
+-- On: BookingApproval
+-- ----------------------------------------------------------------------------
+CREATE TRIGGER trg_BookingApproval_UpdateBookingStatus
+ON BookingApproval
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    IF EXISTS
+    (
+        SELECT 1
+        FROM inserted i
+        JOIN SpaceBooking sb
+            ON i.space_booking_id = sb.space_booking_id
+        WHERE i.decision = N'approved'
+          AND dbo.fn_IsSpaceAvailable
+          (
+              sb.campus_space_code,
+              sb.requested_start_time,
+              sb.requested_end_time
+          ) = 0
+    )
+    BEGIN
+        RAISERROR(
+            N'BR-02/BR-09 violation: The selected space is unavailable and cannot be approved.',
+            16,
+            1
+        );
+
+        ROLLBACK TRANSACTION;
+        RETURN;
+    END;
+
+    UPDATE sb
+    SET status =
+        CASE i.decision
+            WHEN N'approved' THEN N'approved'
+            WHEN N'rejected' THEN N'rejected'
+        END
+    FROM SpaceBooking sb
+    JOIN inserted i
+        ON sb.space_booking_id = i.space_booking_id
+    WHERE sb.status <>
+        CASE i.decision
+            WHEN N'approved' THEN N'approved'
+            WHEN N'rejected' THEN N'rejected'
+        END;
+
+END;
+GO
+
+-- ----------------------------------------------------------------------------
 -- 3. DATA MIGRATION
 -- Source:  SpaceBookingDB (Phase 1)   Target: SpaceBookingDB_Phase2
 -- The triggers created above are disabled for the duration of the migration so
 -- that historical records can be inserted with their original final statuses
 -- (the Phase 1 sample data achieved the same result through explicit UPDATE
--- transitions). Triggers are re-enabled after migration completes.
+-- transitions). In particular, trg_SpaceBooking_AvailabilityCheck_Insert is
+-- disabled because some migrated bookings may overlap active out-of-service
+-- maintenance on their space. Triggers are re-enabled after migration
+-- completes.
 -- ============================================================================
 
 -- Disable migration-sensitive triggers
 ALTER TABLE SpaceBooking    DISABLE TRIGGER trg_SpaceBooking_StatusTransition;
 ALTER TABLE SpaceBooking    DISABLE TRIGGER trg_SpaceBooking_CapacityCheck;
 ALTER TABLE SpaceMaintenance DISABLE TRIGGER trg_SpaceMaintenance_UpdateSpaceStatus;
+ALTER TABLE FacilityMaintenance DISABLE TRIGGER trg_FacilityMaintenance_UpdateSpaceStatus;
+ALTER TABLE BookingApproval DISABLE TRIGGER trg_BookingApproval_UpdateBookingStatus;
 GO
 
 
@@ -596,10 +861,18 @@ GO
 --                       (Phase 1 behaviour: maintenance blocked booking)
 --     * problem_type  : 'broken_projector' removed from the allowed domain in
 --                       Phase 2; remapped to 'other'
+--     * notify_status : new mandatory attribute (Step 10 addition). Every
+--                       migrated row has impact_level = 'out_of_service' (see
+--                       above), so the trigger mapping is applied directly:
+--                       active (reported/in_progress) rows ->
+--                       'updated_to_out_of_service'; closed rows ->
+--                       'nothing_to_notify'. Triggers are disabled during this
+--                       migration (see Section 3), so the value is computed
+--                       here rather than left to trg_SpaceMaintenance_UpdateSpaceStatus.
 -- ----------------------------------------------------------------------------
 SET IDENTITY_INSERT SpaceMaintenance ON;
 GO
-INSERT INTO SpaceMaintenance (space_maintenance_id, campus_space_code, reporter_id, assigned_staff_id, impact_level, problem_description, problem_type, start_time, completion_time, status, result_note)
+INSERT INTO SpaceMaintenance (space_maintenance_id, campus_space_code, reporter_id, assigned_staff_id, impact_level, problem_description, problem_type, start_time, completion_time, status, notify_status, result_note)
 SELECT space_maintenance_id,
        campus_space_code,
        reporter_id,
@@ -610,6 +883,10 @@ SELECT space_maintenance_id,
        start_time,
        completion_time,
        status,
+       CASE WHEN status IN (N'reported', N'in_progress')
+            THEN N'updated_to_out_of_service'   -- matches trigger mapping
+            ELSE N'nothing_to_notify'           -- completed/cancelled
+       END,
        result_note
 FROM SpaceBookingDB.dbo.SpaceMaintenance;
 GO
@@ -627,8 +904,10 @@ GO
 
 -- Re-enable migration-sensitive triggers
 ALTER TABLE SpaceMaintenance ENABLE TRIGGER trg_SpaceMaintenance_UpdateSpaceStatus;
+ALTER TABLE FacilityMaintenance ENABLE TRIGGER trg_FacilityMaintenance_UpdateSpaceStatus;
 ALTER TABLE SpaceBooking    ENABLE TRIGGER trg_SpaceBooking_CapacityCheck;
 ALTER TABLE SpaceBooking    ENABLE TRIGGER trg_SpaceBooking_StatusTransition;
+ALTER TABLE BookingApproval ENABLE TRIGGER trg_BookingApproval_UpdateBookingStatus;
 GO
 
 
@@ -683,6 +962,35 @@ GO
 SELECT space_maintenance_id, problem_type
 FROM SpaceMaintenance
 WHERE problem_type NOT IN ('ac_failure', 'damaged_furniture', 'cleaning', 'network', 'other');
+GO
+
+-- notify_status must match the mapping maintained by
+-- trg_SpaceMaintenance_UpdateSpaceStatus (Section 2) - expect 0 rows
+SELECT space_maintenance_id, status, impact_level, notify_status
+FROM SpaceMaintenance
+WHERE notify_status <> CASE
+        WHEN status IN (N'reported', N'in_progress') AND impact_level = N'out_of_service' THEN N'updated_to_out_of_service'
+        WHEN status IN (N'reported', N'in_progress') AND impact_level = N'advisory' THEN N'updated_to_advisory'
+        WHEN status IN (N'completed', N'cancelled') THEN N'nothing_to_notify'
+        ELSE notify_status
+    END;
+GO
+
+-- BookingApproval.decision must be consistent with the booking status that
+-- trg_BookingApproval_UpdateBookingStatus (Section 2) maintains:
+--   decision='approved'  -> booking in the approved lifecycle
+--   decision='rejected'  -> booking 'rejected'
+-- The migrated approvals reference bookings whose statuses have already
+-- advanced (e.g. checked_in/completed/no-show), which is why the trigger was
+-- disabled during migration. Expect 0 rows.
+SELECT a.booking_approval_id, a.decision, sb.status
+FROM BookingApproval a
+JOIN SpaceBooking sb ON a.space_booking_id = sb.space_booking_id
+WHERE NOT (
+        (a.decision = N'approved' AND sb.status IN (N'approved', N'checked_in', N'completed', N'no-show'))
+        OR
+        (a.decision = N'rejected' AND sb.status = N'rejected')
+      );
 GO
 
 -- Duplicate primary keys / unique keys must not be introduced

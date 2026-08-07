@@ -566,3 +566,29 @@ The following business rules are defined in the business requirements but are no
 ## Model Usage
 
 **Big Pickle (from the default provider):** Used as the primary model.
+
+---
+
+# Student Work Report
+
+**Name:** Nguyễn Minh Tâm
+
+**Student ID:** 24125042
+
+**Task:** Update Schema migration
+
+## Tasks have been done:
+1. Add notify_status column to SpaceMaintenance to notify staff if there is any update
+2. Create function to check if a space is under maintenance or not
+   - If there is an out-of-service record in SpaceMaintenace
+   - If there is an out-of-service record of any Facility belong to that place in Facility Maintenance
+3. Create function to check if a space is available or not
+   - Check if that space is retired or temporarily closed
+   - Check if that space is under maintenance or not
+4. Update trigger in SpaceMaintenance.
+   - Base on the status of the place using the previous function, set the correspoding status
+   - Synchronize the notify_status column to correctly announce staff there is an insert/ update in SpaceMaintenance. After that, staff will run query 4 to announce related requester.
+5. Add trigger in FacilityMaintenance
+   - The logic is the same as trigger for SpaceMaintenance
+6. Add trigger to only allow booking on available spaces
+7. Add trigger to synchronize BookingApproval with SpaceBooking
