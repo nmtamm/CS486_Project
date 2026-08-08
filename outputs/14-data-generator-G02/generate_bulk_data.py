@@ -14,14 +14,23 @@ from datetime import datetime, timedelta
 import pyodbc
 
 # Configuration
+# If you use local host SQL server
 DB_CONFIG = {
-    "server": "192.168.0.107,1433",
+    "server": "localhost",
     "database": "SpaceBookingDB_Phase2",
     "driver": "{ODBC Driver 17 for SQL Server}",
-    "trusted_connection": "no",
-    "user_name": "sa",
-    "password": "Minhtam01@",
+    "trusted_connection": "yes",
 }
+
+# If you use remote SQL server, uncomment the following
+# DB_CONFIG = {
+#     "server": "ip_address_or_hostname,port", (e.g., "remote ip,1433")
+#     "database": "SpaceBookingDB_Phase2",
+#     "driver": "{ODBC Driver 17 for SQL Server}",
+#     "trusted_connection": "no",
+#     "user_name": "your_username",
+#     "password": "your_password",
+# }
 
 BATCH_SIZE = 10000
 
@@ -67,14 +76,24 @@ def get_connection():
         if not available_driver.startswith("{"):
             available_driver = f"{{{available_driver}}}"
 
+    # If you use local host SQL server
     conn_str = (
         f"DRIVER={available_driver};"
         f"SERVER={DB_CONFIG['server']};"
         f"DATABASE={DB_CONFIG['database']};"
         f"Trusted_Connection={DB_CONFIG['trusted_connection']};"
-        f"UID={DB_CONFIG['user_name']};"
-        f"PWD={DB_CONFIG['password']}"
     )
+
+    # If you use remote SQL server, uncomment the following
+    # conn_str = (
+    #     f"DRIVER={available_driver};"
+    #     f"SERVER={DB_CONFIG['server']};"
+    #     f"DATABASE={DB_CONFIG['database']};"
+    #     f"Trusted_Connection={DB_CONFIG['trusted_connection']};"
+    #     f"UID={DB_CONFIG['user_name']};"
+    #     f"PWD={DB_CONFIG['password']}"
+    # )
+
     conn = pyodbc.connect(conn_str)
     return conn
 

@@ -10,14 +10,23 @@ import sys
 import pyodbc
 
 # Database configuration settings
+# If you use local host SQL server
 DB_CONFIG = {
-    "server": "192.168.0.107,1433",
+    "server": "localhost",
     "database": "SpaceBookingDB_Phase2",
-    "driver": "{ODBC Driver 17 for SQL Server}",  # fallback to '{SQL Server}' if 17 is missing
-    "trusted_connection": "no",  # Windows Authentication
-    "user_name":"sa",
-    "password":"Minhtam01@"
+    "driver": "{ODBC Driver 17 for SQL Server}",
+    "trusted_connection": "yes",
 }
+
+# If you use remote SQL server, uncomment the following
+# DB_CONFIG = {
+#     "server": "ip_address_or_hostname,port", (e.g., "remote ip,1433")
+#     "database": "SpaceBookingDB_Phase2",
+#     "driver": "{ODBC Driver 17 for SQL Server}",
+#     "trusted_connection": "no",
+#     "user_name": "your_username",
+#     "password": "your_password",
+# }
 
 REQUIRED_TABLES = [
     'SpaceTypeBookingPolicy',
@@ -53,14 +62,23 @@ def test_connection():
             
     print(f"Using ODBC Driver: {available_driver}")
     
+    # If you use local host SQL server
     conn_str = (
         f"DRIVER={available_driver};"
         f"SERVER={DB_CONFIG['server']};"
         f"DATABASE={DB_CONFIG['database']};"
         f"Trusted_Connection={DB_CONFIG['trusted_connection']};"
-        f"UID={DB_CONFIG['user_name']};"
-        f"PWD={DB_CONFIG['password']}"
     )
+
+    # If you use remote SQL server, uncomment the following
+    # conn_str = (
+    #     f"DRIVER={available_driver};"
+    #     f"SERVER={DB_CONFIG['server']};"
+    #     f"DATABASE={DB_CONFIG['database']};"
+    #     f"Trusted_Connection={DB_CONFIG['trusted_connection']};"
+    #     f"UID={DB_CONFIG['user_name']};"
+    #     f"PWD={DB_CONFIG['password']}"
+    # )
     
     print(f"Connecting to MS SQL Server '{DB_CONFIG['server']}', database '{DB_CONFIG['database']}'...")
     
