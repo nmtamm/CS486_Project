@@ -99,7 +99,7 @@ erDiagram
 
     CampusFacility {
         int campus_facility_id PK
-        nvarchar facility_type UK
+        nvarchar facility_type
         nvarchar description
         nvarchar campus_space_code FK "nullable"
         nvarchar status "Values: available; in_use; under_maintenance"
@@ -344,7 +344,7 @@ end
 
 subgraph FAC ["`**CampusFacility**`"]
 FAC1["`**🔑 campus_facility_id**`"] ~~~
-FAC2["`⭐ facility_type`"] ~~~
+FAC2["`facility_type`"] ~~~
 FAC3["description"] ~~~
 FAC4["`*🔗 campus_space_code*`"] ~~~
 FAC5["status"]
@@ -477,13 +477,13 @@ CampusSpace(campus_space_code PK, space_name, space_type FK→SpaceTypeBookingPo
 #### CampusFacility (modified)
 
 ```text
-CampusFacility(campus_facility_id PK, facility_type UK, description, campus_space_code FK→CampusSpace.campus_space_code, status)
+CampusFacility(campus_facility_id PK, facility_type, description, campus_space_code FK→CampusSpace.campus_space_code, status)
 ```
 
 | Attribute | SQL Server Data Type | Nullability | Key/Constraint | Default | References / Rule |
 |---|---|---|---|---|---|
 | campus_facility_id | INT | NOT NULL | PK | IDENTITY(1,1) | — |
-| facility_type | NVARCHAR(100) | NOT NULL | UK | — | Preserved attribute name; one row represents one facility |
+| facility_type | NVARCHAR(100) | NOT NULL | — | — | Preserved attribute name; one row represents one facility |
 | description | NVARCHAR(MAX) | NULL | — | — | — |
 | campus_space_code | NVARCHAR(20) | NULL | FK | — | `CampusSpace.campus_space_code` |
 | status | NVARCHAR(30) | NOT NULL | CHECK | 'available' | `CHECK (status IN ('available','in_use','under_maintenance'))` |

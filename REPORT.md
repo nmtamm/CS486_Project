@@ -650,7 +650,10 @@ The following business rules are defined in the business requirements but are no
 5. Update status of `SpaceBooking` from approved -> checked_in -> completed
 6. Update status of remaining records in `SpaceBooking` from checked_in -> no-show
 7. Generate sessions for completed booking and stored to `SpaceUsageSession`
-8.  
+8. 
+
+---
+
 **Name:** Trần Trung Hậu
 
 **Student ID:** 24125055
@@ -665,3 +668,18 @@ Implement required queries for necessary reporting:
 2. AQ-02 Number of approved bookings by weekday and hour for a semester.
 3. AQ-03 Available spaces satisfying capacity and required facilities.
 4. AQ-04 Approved bookings affected by out-of-service maintenance (if the maintenance is escalated to out-of-service).
+
+---
+
+# Student Work Report
+
+**Name:** Nguyễn Minh Tâm
+
+**Student ID:** 24125042
+
+**Task:** Update data generation logic
+
+1. Update schema a bit, remove UNIQUE constraint for `facility_type`. Since this is the general type
+2. Add data for Advisory Acknowledgement
+3. Update the logic of trigger 01
+4. Update query a bit. Try to utilize defined function as much as possible

@@ -168,6 +168,7 @@ ORDER BY
 GO
 
 
+
 -- ============================================================================
 -- AQ-03 - ROOM FINDER
 -- Business question:
@@ -198,63 +199,17 @@ VALUES
 IF @AQ03_RequiredEnd <= @AQ03_RequiredStart
     THROW 51000, 'AQ-03: Required end time must be later than required start time.', 1;
 
-SELECT
-    cs.campus_space_code,
-    cs.space_name,
-    cs.space_type,
-    cs.building,
-    cs.floor,
-    cs.room_number,
-    cs.capacity
-FROM CampusSpace cs
-WHERE cs.capacity >= @AQ03_MinCapacity
-  AND cs.current_status NOT IN ('temporarily_closed', 'retired')
-
-  -- No conflicting booking that has been approved through either path.
-  AND NOT EXISTS (
-        SELECT 1
-        FROM SpaceBooking sb
-        WHERE sb.campus_space_code = cs.campus_space_code
-          AND sb.status IN ('approved', 'checked_in', 'completed', 'no-show')
-          AND (
-                sb.is_instant_booking = 1
-                OR EXISTS (
-                    SELECT 1
-                    FROM BookingApproval ba
-                    WHERE ba.space_booking_id = sb.space_booking_id
-                      AND ba.decision = 'approved'
-                )
-              )
-          AND sb.requested_start_time < @AQ03_RequiredEnd
-          AND sb.requested_end_time > @AQ03_RequiredStart
-  )
-
-  -- Relational division: no requested facility may be missing or unavailable.
-  AND NOT EXISTS (
-        SELECT 1
-        FROM @AQ03_RequiredFacilities rf
-        WHERE NOT EXISTS (
-            SELECT 1
-            FROM CampusFacility cf
-            WHERE cf.campus_space_code = cs.campus_space_code
-              AND cf.facility_type = rf.facility_type
-              AND cf.status <> 'under_maintenance'
-              AND NOT EXISTS (
-                    SELECT 1
-                    FROM FacilityMaintenance fm
-                    WHERE fm.campus_facility_id = cf.campus_facility_id
-                      AND fm.status IN ('reported', 'in_progress')
-                      AND fm.start_time < @AQ03_RequiredEnd
-                      AND COALESCE(fm.completion_time, CONVERT(DATETIME2, '9999-12-31'))
-                          > @AQ03_RequiredStart
-              )
-        )
-  )
-ORDER BY
-    cs.capacity,
-    cs.campus_space_code;
-GO
-
+SELECT *
+FROM CampusSpace as CS
+WHERE dbo.fn_IsSpaceAvailable(CS.campus_space_code,@AQ03_RequiredStart,@AQ03_RequiredEnd,NULL) = 1
+and @AQ03_MinCapacity <= CS.capacity
+and exists (select *
+			from @AQ03_RequiredFacilities
+			where facility_type in (
+				select distinct facility_type
+				from CampusFacility
+				where campus_space_code = CS.campus_space_code and status = 'available')
+			)
 
 -- ============================================================================
 -- AQ-04
@@ -269,99 +224,15 @@ GO
 --   2. FacilityMaintenance escalated to out_of_service.
 -- ============================================================================
 
-DECLARE @SpaceMaintenanceId INT = NULL;
-DECLARE @FacilityMaintenanceId INT = NULL;
-
-;WITH AffectedMaintenance AS (
-
-    -- 1. Space-level maintenance
-    SELECT
-        'SPACE' AS maintenance_type,
-        sm.space_maintenance_id AS maintenance_id,
-        sm.campus_space_code,
-        CAST(NULL AS INT) AS campus_facility_id,
-        CAST(NULL AS NVARCHAR(100)) AS facility_type,
-        sm.problem_description,
-        sm.start_time AS maintenance_start,
-        sm.completion_time AS maintenance_end
-    FROM SpaceMaintenance sm
-    WHERE sm.status IN ('reported', 'in_progress')
-      AND sm.space_maintenance_id = @SpaceMaintenanceId
-          
-
-    UNION ALL
-
-    -- 2. Facility-level maintenance
-    SELECT
-        'FACILITY' AS maintenance_type,
-        fm.facility_maintenance_id AS maintenance_id,
-        cf.campus_space_code,
-        fm.campus_facility_id,
-        cf.facility_type,
-        fm.problem_description,
-        fm.start_time AS maintenance_start,
-        fm.completion_time AS maintenance_end
-    FROM FacilityMaintenance fm
-    JOIN CampusFacility cf
-        ON cf.campus_facility_id = fm.campus_facility_id
-    WHERE fm.status IN ('reported', 'in_progress')
-      AND cf.campus_space_code IS NOT NULL
-      AND fm.facility_maintenance_id = @FacilityMaintenanceId
+select *
+from SpaceBooking
+where status = 'approved' and campus_space_code in (
+	select distinct campus_space_code
+	from SpaceMaintenance
+	where notify_status = 'updated_to_out_of_service'
+	union
+	select distinct CF.campus_space_code
+	from FacilityMaintenance as FM
+	join CampusFacility as CF on FM.campus_facility_id = CF.campus_facility_id
+	where notify_status = 'updated_to_out_of_service'
 )
-
-SELECT
-    am.maintenance_type,
-    am.maintenance_id,
-
-    am.campus_space_code,
-    cs.space_name,
-
-    am.campus_facility_id,
-    am.facility_type,
-
-    am.problem_description,
-    am.maintenance_start,
-    am.maintenance_end,
-
-    sb.space_booking_id,
-    sb.requester_id,
-    cu.full_name AS requester_name,
-    cu.email AS requester_email,
-
-    sb.requested_start_time,
-    sb.requested_end_time,
-    sb.purpose_type,
-    sb.status,
-    sb.is_instant_booking
-
-FROM AffectedMaintenance am
-
-JOIN CampusSpace cs
-    ON cs.campus_space_code = am.campus_space_code
-
-JOIN SpaceBooking sb
-    ON sb.campus_space_code = am.campus_space_code
-
-    -- Booking and maintenance intervals overlap
-    AND sb.requested_start_time <
-        COALESCE(
-            am.maintenance_end,
-            CONVERT(DATETIME2, '9999-12-31')
-        )
-
-    AND sb.requested_end_time > am.maintenance_start
-
-JOIN CampusUser cu
-    ON cu.campus_user_id = sb.requester_id
-
-WHERE sb.status IN (
-        'approved',
-        'checked_in',
-        'completed',
-        'no-show'
-    )
-
-ORDER BY
-    am.maintenance_type,
-    am.maintenance_id,
-    sb.requested_start_time;

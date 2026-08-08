@@ -568,7 +568,7 @@ def main():
         facilities_data = []
 
         facility_types = [
-            "Projector HD",
+            "Projector",
             "Whiteboard",
             "Microphone System",
             "Desktop Computers",
@@ -582,14 +582,9 @@ def main():
                 facility_types,
                 k=3
             ):
-
-                unique_fac_type = (
-                    f"{ftype} - {sc}"
-                )
-
                 facilities_data.append(
                     (
-                        unique_fac_type,
+                        ftype,
                         f"Standard facility for {sc}",
                         sc,
                         "available"
@@ -1182,14 +1177,9 @@ def main():
             FROM CampusSpace cs
             WHERE dbo.fn_IsSpaceAvailable(
                 cs.campus_space_code,
-                CAST(
-                    '2026-08-01 07:00:00'
-                    AS DATETIME2
-                ),
-                CAST(
-                    '2026-08-01 08:00:00'
-                    AS DATETIME2
-                )
+                CAST('2026-08-01 07:00:00' AS DATETIME2),
+                CAST('2026-08-01 08:00:00' AS DATETIME2),
+                NULL
             ) = 1
             """
         )
@@ -2267,6 +2257,582 @@ def main():
                 f"{TOTAL_BOOKINGS:,}"
                 f" total bookings)"
             )
+
+        # =================================================================
+        # Phase 7: Advisory Acknowledgement / Booking-Related Maintenance
+        # =================================================================
+        # For approved SpaceBookings, turn:
+        # 5%  -> reported + advisory
+        # 15% -> reported + out_of_service
+        # =================================================================
+
+        print()
+        print(
+            "[7/7] Generating booking-related maintenance "
+            "for approved spaces..."
+        )
+
+        # ================================================================
+        # 7A. Determine spaces with approved bookings
+        # ================================================================
+
+        cursor.execute(
+            """
+            SELECT
+                sb.campus_space_code,
+                MAX(ba.decision_time) AS latest_approval_time
+            FROM SpaceBooking sb
+            INNER JOIN BookingApproval ba
+                ON ba.space_booking_id =
+                sb.space_booking_id
+            WHERE ba.decision = 'approved'
+            GROUP BY
+                sb.campus_space_code
+            """
+        )
+
+        approved_space_rows = cursor.fetchall()
+
+        approved_space_latest_approval = {
+            row[0]: row[1]
+            for row in approved_space_rows
+        }
+
+        approved_space_codes = list(
+            approved_space_latest_approval.keys()
+        )
+
+        approved_space_count = len(
+            approved_space_codes
+        )
+
+        print(
+            f"      -> Spaces with approved bookings: "
+            f"{approved_space_count:,}"
+        )
+
+        if approved_space_count == 0:
+
+            print(
+                "      -> No approved spaces found. "
+                "Skipping Phase 7."
+            )
+
+        else:
+
+            # ============================================================
+            # 7B. Calculate maintenance counts
+            # ============================================================
+
+            advisory_count = max(
+                1,
+                round(
+                    approved_space_count * 0.05
+                )
+            )
+
+            out_of_service_count = max(
+                1,
+                round(
+                    approved_space_count * 0.15
+                )
+            )
+
+            # Cannot select more spaces than actually exist.
+            total_required = (
+                advisory_count
+                +
+                out_of_service_count
+            )
+
+            if total_required > approved_space_count:
+
+                out_of_service_count = max(
+                    0,
+                    approved_space_count
+                    - advisory_count
+                )
+
+            print(
+                f"      -> Advisory spaces (5%): "
+                f"{advisory_count:,}"
+            )
+
+            print(
+                f"      -> Out-of-service spaces (15%): "
+                f"{out_of_service_count:,}"
+            )
+
+            # ============================================================
+            # 7C. Randomly divide approved spaces
+            # ============================================================
+
+            shuffled_spaces = (
+                approved_space_codes.copy()
+            )
+
+            random.shuffle(
+                shuffled_spaces
+            )
+
+            advisory_spaces = (
+                shuffled_spaces[
+                    :advisory_count
+                ]
+            )
+
+            out_of_service_start = (
+                advisory_count
+            )
+
+            out_of_service_spaces = (
+                shuffled_spaces[
+                    out_of_service_start:
+                    out_of_service_start
+                    + out_of_service_count
+                ]
+            )
+
+            print(
+                "      -> Selected advisory spaces:"
+            )
+
+            print(
+                "         "
+                +
+                ", ".join(
+                    sorted(
+                        advisory_spaces
+                    )
+                )
+            )
+
+            print(
+                "      -> Selected out-of-service spaces:"
+            )
+
+            print(
+                "         "
+                +
+                ", ".join(
+                    sorted(
+                        out_of_service_spaces
+                    )
+                )
+            )
+
+            # ============================================================
+            # 7D. Generate SpaceMaintenance / FacilityMaintenance
+            # ============================================================
+
+            phase7_space_maintenance = []
+
+            phase7_facility_maintenance = []
+
+            # ------------------------------------------------------------
+            # Helper data
+            # ------------------------------------------------------------
+
+            facility_by_space = {}
+
+            cursor.execute(
+                """
+                SELECT
+                    campus_facility_id,
+                    campus_space_code,
+                    facility_type
+                FROM CampusFacility
+                """
+            )
+
+            for (
+                facility_id,
+                space_code,
+                facility_type
+            ) in cursor.fetchall():
+
+                facility_by_space.setdefault(
+                    space_code,
+                    []
+                ).append(
+                    (
+                        facility_id,
+                        facility_type
+                    )
+                )
+
+            facility_problem_map = {
+                "Projector":
+                    "projector_failure",
+
+                "Whiteboard":
+                    "whiteboard_damage",
+
+                "Microphone System":
+                    "microphone_failure",
+
+                "Desktop Computers":
+                    "computer_failure",
+
+                "Air Conditioner":
+                    "air_conditioner_failure",
+
+                "Sound System":
+                    "sound_system_failure"
+            }
+
+            # ------------------------------------------------------------
+            # Generate advisory maintenance
+            # ------------------------------------------------------------
+
+            for code in advisory_spaces:
+
+                reporter = random.choice(
+                    staff_ids
+                )
+
+                assigned = random.choice(
+                    staff_ids
+                )
+
+                # Randomly decide whether this
+                # maintenance belongs to the
+                # space or one of its facilities.
+                #
+                # 50% SpaceMaintenance
+                # 50% FacilityMaintenance
+                # when a facility exists.
+                facilities = (
+                    facility_by_space.get(
+                        code,
+                        []
+                    )
+                )
+
+                use_facility = (
+                    bool(facilities)
+                    and
+                    random.random() < 0.50
+                )
+
+                approval_time = (
+                    approved_space_latest_approval[code]
+                )
+
+                approval_date = approval_time.date()
+
+                maintenance_date = (
+                    approval_date
+                    + timedelta(
+                        days=random.randint(1, 7)
+                    )
+                )
+
+                maintenance_start = datetime(
+                    maintenance_date.year,
+                    maintenance_date.month,
+                    maintenance_date.day,
+                    random.randint(7, 18),
+                    random.choice([0, 30])
+                )
+
+                if use_facility:
+
+                    facility_id, facility_type = random.choice(facilities)
+
+                    problem = facility_problem_map.get(
+                        facility_type,
+                        "facility_failure"
+                    )
+
+                    problem_description = (
+                        f"{facility_type} failure identified "
+                        f"after approved booking in {code}."
+                    )
+                    
+                    phase7_facility_maintenance.append(
+                        (
+                            facility_id,
+                            reporter,
+                            assigned,
+                            "advisory",
+                            problem_description,
+                            maintenance_start.strftime(
+                                "%Y-%m-%d %H:%M:%S"
+                            ),
+                            None,
+                            "reported",
+                            "updated_to_advisory",
+                            None
+                        )
+                    )
+
+                else:
+
+                    problem = random.choice(
+                        [
+                            "ac_failure",
+                            "damaged_furniture",
+                            "cleaning",
+                            "network",
+                            "other"
+                        ]
+                    )
+
+                    phase7_space_maintenance.append(
+                        (
+                            code,
+                            reporter,
+                            assigned,
+                            "advisory",
+                            (
+                                f"Advisory maintenance "
+                                f"identified after approved "
+                                f"booking in {code}."
+                            ),
+                            problem,
+                            maintenance_start.strftime(
+                                "%Y-%m-%d %H:%M:%S"
+                            ),
+                            None,
+                            "reported",
+                            "updated_to_advisory",
+                            None
+                        )
+                    )
+
+            # ------------------------------------------------------------
+            # Generate out-of-service maintenance
+            # ------------------------------------------------------------
+
+            for code in out_of_service_spaces:
+
+                reporter = random.choice(
+                    staff_ids
+                )
+
+                assigned = random.choice(
+                    staff_ids
+                )
+
+                facilities = (
+                    facility_by_space.get(
+                        code,
+                        []
+                    )
+                )
+
+                use_facility = (
+                    bool(facilities)
+                    and
+                    random.random() < 0.50
+                )
+
+                maintenance_start = (
+                    datetime(
+                        2026,
+                        8,
+                        1,
+                        random.randint(
+                            7,
+                            18
+                        ),
+                        random.choice(
+                            [0, 30]
+                        )
+                    )
+                )
+
+                if use_facility:
+
+                    facility_id, facility_type = random.choice(
+                        facilities
+                    )
+
+                    problem = facility_problem_map.get(
+                        facility_type,
+                        "facility_failure"
+                    )
+
+                    problem_description = (
+                        f"{facility_type} failure identified "
+                        f"after approved booking in {code}."
+                    )
+
+                    phase7_facility_maintenance.append(
+                        (
+                            facility_id,
+                            reporter,
+                            assigned,
+                            "out_of_service",
+                            problem_description,
+                            maintenance_start.strftime(
+                                "%Y-%m-%d %H:%M:%S"
+                            ),
+                            None,
+                            "reported",
+                            "updated_to_out_of_service",
+                            None
+                        )
+                    )
+
+                else:
+
+                    problem = random.choice(
+                        [
+                            "ac_failure",
+                            "damaged_furniture",
+                            "cleaning",
+                            "network",
+                            "other"
+                        ]
+                    )
+
+                    phase7_space_maintenance.append(
+                        (
+                            code,
+                            reporter,
+                            assigned,
+                            "out_of_service",
+                            (
+                                f"Out-of-service maintenance "
+                                f"identified after approved "
+                                f"booking in {code}."
+                            ),
+                            problem,
+                            maintenance_start.strftime(
+                                "%Y-%m-%d %H:%M:%S"
+                            ),
+                            None,
+                            "reported",
+                            "updated_to_out_of_service",
+                            None
+                        )
+                    )
+
+            # ============================================================
+            # 7E. Insert SpaceMaintenance
+            # ============================================================
+
+            print(
+                f"      Inserting "
+                f"{len(phase7_space_maintenance):,} "
+                f"Phase 7 SpaceMaintenance records..."
+            )
+
+            for i in range(
+                0,
+                len(phase7_space_maintenance),
+                BATCH_SIZE
+            ):
+
+                batch = phase7_space_maintenance[
+                    i:i + BATCH_SIZE
+                ]
+
+                cursor.executemany(
+                    """
+                    INSERT INTO SpaceMaintenance
+                    (
+                        campus_space_code,
+                        reporter_id,
+                        assigned_staff_id,
+                        impact_level,
+                        problem_description,
+                        problem_type,
+                        start_time,
+                        completion_time,
+                        status,
+                        notify_status,
+                        result_note
+                    )
+                    VALUES
+                    (
+                        ?, ?, ?, ?, ?, ?,
+                        ?, ?, ?, ?, ?
+                    )
+                    """,
+                    batch
+                )
+
+            conn.commit()
+
+            # ============================================================
+            # 7F. Insert FacilityMaintenance
+            # ============================================================
+
+            print(
+                f"      Inserting "
+                f"{len(phase7_facility_maintenance):,} "
+                f"Phase 7 FacilityMaintenance records..."
+            )
+
+            for i in range(
+                0,
+                len(phase7_facility_maintenance),
+                BATCH_SIZE
+            ):
+
+                batch = phase7_facility_maintenance[
+                    i:i + BATCH_SIZE
+                ]
+
+                cursor.executemany(
+                    """
+                    INSERT INTO FacilityMaintenance
+                    (
+                        campus_facility_id,
+                        reporter_id,
+                        assigned_staff_id,
+                        impact_level,
+                        problem_description,
+                        start_time,
+                        completion_time,
+                        status,
+                        notify_status,
+                        result_note
+                    )
+                    VALUES
+                    (
+                        ?, ?, ?, ?, ?,
+                        ?, ?, ?, ?, ?
+                    )
+                    """,
+                    batch
+                )
+
+            conn.commit()
+
+            # ============================================================
+            # 7G. Statistics
+            # ============================================================
+
+            print(
+                f"      -> Phase 7 SpaceMaintenance: "
+                f"{len(phase7_space_maintenance):,}"
+            )
+
+            print(
+                f"      -> Phase 7 FacilityMaintenance: "
+                f"{len(phase7_facility_maintenance):,}"
+            )
+
+            print(
+                f"      -> Phase 7 total maintenance: "
+                f"{len(phase7_space_maintenance) + len(phase7_facility_maintenance):,}"
+            )
+
+            # ------------------------------------------------------------
+            # Release Phase 7 buffers
+            # ------------------------------------------------------------
+
+            del approved_space_codes
+            del shuffled_spaces
+            del advisory_spaces
+            del out_of_service_spaces
+            del facility_by_space
+            del phase7_space_maintenance
+            del phase7_facility_maintenance
 
             # ---------------------------------------------------------
             # Release Python memory belonging to this patch.

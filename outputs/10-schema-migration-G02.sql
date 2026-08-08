@@ -139,7 +139,6 @@ CREATE TABLE CampusFacility (
     status             NVARCHAR(30)  NOT NULL DEFAULT 'available',
 
     PRIMARY KEY (campus_facility_id),
-    UNIQUE (facility_type),
     FOREIGN KEY (campus_space_code) REFERENCES CampusSpace (campus_space_code),
     CHECK (status IN ('available', 'in_use', 'under_maintenance'))
 );
@@ -361,27 +360,49 @@ CREATE FUNCTION fn_IsSpaceAvailable
 (
     @CampusSpaceCode NVARCHAR(50),
     @RequestedStartTime DATETIME2,
-    @RequestedEndTime DATETIME2
+    @RequestedEndTime DATETIME2,
+    @ExcludeBookingId INT = NULL
 )
 RETURNS BIT
 AS
 BEGIN
-    DECLARE @Available BIT = 1;
 
-    -- Space must not be retired or temporarily closed
     IF NOT EXISTS
     (
         SELECT 1
         FROM CampusSpace
         WHERE campus_space_code = @CampusSpaceCode
-          AND current_status NOT IN ('retired', 'temporarily_closed')
+          AND current_status NOT IN (
+              'retired',
+              'temporarily_closed'
+          )
     )
     BEGIN
         RETURN 0;
     END;
 
-    -- Space and its facilities must not have any active out_of_service maintenance during the requested period
-    IF dbo.fn_IsSpaceUnderMaintenance(@CampusSpaceCode) = 1
+    IF dbo.fn_IsSpaceUnderMaintenance(
+        @CampusSpaceCode
+    ) = 1
+    BEGIN
+        RETURN 0;
+    END;
+
+    IF EXISTS
+    (
+        SELECT 1
+        FROM SpaceBooking
+        WHERE campus_space_code = @CampusSpaceCode
+          AND status = 'approved'
+
+          AND (
+              @ExcludeBookingId IS NULL
+              OR space_booking_id <> @ExcludeBookingId
+          )
+
+          AND requested_start_time < @RequestedEndTime
+          AND requested_end_time > @RequestedStartTime
+    )
     BEGIN
         RETURN 0;
     END;
@@ -452,16 +473,19 @@ BEGIN
         RETURN;
     END;
 
-    IF EXISTS (
-        SELECT 1
-        FROM inserted i
-        WHERE dbo.fn_IsSpaceAvailable
-        (
-            i.campus_space_code,
-            i.requested_start_time,
-            i.requested_end_time
-        ) = 0
-    )
+    IF EXISTS
+	(
+		SELECT 1
+		FROM inserted i
+		WHERE dbo.fn_IsSpaceAvailable
+		(
+			i.campus_space_code,
+			i.requested_start_time,
+			i.requested_end_time,
+			i.space_booking_id
+		) = 0
+	)
+	
     BEGIN
         RAISERROR(
             N'BR-02/BR-09 violation: The selected space is unavailable for the requested period.',
@@ -679,7 +703,8 @@ BEGIN
           (
               sb.campus_space_code,
               sb.requested_start_time,
-              sb.requested_end_time
+              sb.requested_end_time,
+			  sb.space_booking_id
           ) = 0
     )
     BEGIN
