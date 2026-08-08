@@ -11,10 +11,12 @@ import pyodbc
 
 # Database configuration settings
 DB_CONFIG = {
-    "server": "localhost",
+    "server": "192.168.0.107,1433",
     "database": "SpaceBookingDB_Phase2",
-    "driver": "{ODBC Driver 17 for SQL Server}", # fallback to '{SQL Server}' if 17 is missing
-    "trusted_connection": "yes" # Windows Authentication
+    "driver": "{ODBC Driver 17 for SQL Server}",  # fallback to '{SQL Server}' if 17 is missing
+    "trusted_connection": "no",  # Windows Authentication
+    "user_name":"sa",
+    "password":"Minhtam01@"
 }
 
 REQUIRED_TABLES = [
@@ -56,6 +58,8 @@ def test_connection():
         f"SERVER={DB_CONFIG['server']};"
         f"DATABASE={DB_CONFIG['database']};"
         f"Trusted_Connection={DB_CONFIG['trusted_connection']};"
+        f"UID={DB_CONFIG['user_name']};"
+        f"PWD={DB_CONFIG['password']}"
     )
     
     print(f"Connecting to MS SQL Server '{DB_CONFIG['server']}', database '{DB_CONFIG['database']}'...")

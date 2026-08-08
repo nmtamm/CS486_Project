@@ -613,3 +613,41 @@ The following business rules are defined in the business requirements but are no
 ## Model Usage
 
 **Gemini 3.6 Flash (High):** Used as the primary model.
+
+---
+
+# Student Work Report
+
+**Name:** Nguyễn Minh Tâm
+
+**Student ID:** 24125042
+
+**Task:** Fix data generation logic
+
+## Current problem:
+1. I have added column "notify_status" to SpaceMaintenance. Hence I need update the logic a bit
+2. Triggers are violated with current approach
+
+## What have been done:
+1. Ensure that triggers are not violated
+2. Divide into patches and commit right after generate
+
+## New flow:
+
+### Update phase 5: Maintenance Data
+1. Currently, only marks maximum 10 spaces under maintenance. The rest 50 are available for booking.
+2. Add maintenance consisting 3 status, with the following percentage: 10% reported, 15% in_progress, 75% completed
+3. Update `impact_level` of `SpaceMaintenance`
+4. Update `notify_status` according to `impact_level`
+5. Do the same for `FacilityMaintenance`
+6. 
+
+### Update phase 6:
+1. Insert `approved` or `pending` records to `SpaceMaintenance`
+2. Use ID retrieved from database instead of manually count
+3. Update status of `SpaceBooking` from pending -> cancelled
+4. Generate `BookingApproval` records, 85% approved for non-instant and 15% reject
+5. Update status of `SpaceBooking` from approved -> checked_in -> completed
+6. Update status of remaining records in `SpaceBooking` from checked_in -> no-show
+7. Generate sessions for completed booking and stored to `SpaceUsageSession`
+8.  
