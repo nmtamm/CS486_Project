@@ -683,3 +683,24 @@ Implement required queries for necessary reporting:
 2. Add data for Advisory Acknowledgement
 3. Update the logic of trigger 01
 4. Update query a bit. Try to utilize defined function as much as possible
+
+---
+
+# Student Work Report
+
+**Name:** Nguyễn Minh Tâm
+
+**Student ID:** 24125042
+
+**Task:** Step 15 - Index Tuning
+
+## Tasks have been done
+
+1. **Schema identification** — Listed the tables related to the booking conflict check, the room finder, and the 4 analytical queries (`SpaceBooking`, `CampusSpace`, `CampusFacility`, `SpaceMaintenance`, `FacilityMaintenance`, plus `CampusUser` / `SpaceTypeBookingPolicy` / `Semester` by PK only).
+2. **Attribute identification** — Mapped each tuning target's driving predicates to index key vs. INCLUDE columns (overlap: `campus_space_code`, `status`, `requested_start_time`; blocking maintenance: `campus_space_code`, `status`, `impact_level`; semester queries: `status`, `requested_start_time`; room finder: `capacity`, `facility_type`).
+3. **Index implementation** — Produced `outputs/15-index-tuning-G02.sql` with 7 nonclustered indexes (conflict check overlap, semester reporting, blocking maintenance, advisory notification, facility lookup, facility list, capacity/availability), each followed by a `GO` batch separator. Script is **not executed** per the step instruction.
+4. **Documentation** — Wrote `outputs/15-index-tuning-G02.md` documenting the objective, reference files, schema identification, indexable attribute analysis, index implementation table, execution restriction, and traceability.
+
+## Model Usage
+
+**Big Pickle (from the default provider):** Used as the primary model.
