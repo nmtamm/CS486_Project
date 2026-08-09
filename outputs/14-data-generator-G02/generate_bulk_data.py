@@ -12,6 +12,10 @@ import sys
 import random
 from datetime import datetime, timedelta
 import pyodbc
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 # Configuration
 # If you use local host SQL server
@@ -24,12 +28,12 @@ DB_CONFIG = {
 
 # If you use remote SQL server, uncomment the following
 # DB_CONFIG = {
-#     "server": "ip_address_or_hostname,port", (e.g., "remote ip,1433")
+#     "server": os.getenv("server_name"), # (e.g., "remote ip,1433")
 #     "database": "SpaceBookingDB_Phase2",
 #     "driver": "{ODBC Driver 17 for SQL Server}",
 #     "trusted_connection": "no",
-#     "user_name": "your_username",
-#     "password": "your_password",
+#     "user_name": os.getenv("user_name"),
+#     "password": os.getenv("password"),
 # }
 
 BATCH_SIZE = 10000
@@ -117,7 +121,7 @@ def main():
     # CONFIGURATION
     # =====================================================================
 
-    TOTAL_BOOKINGS = 100000
+    TOTAL_BOOKINGS = 500000
 
     # Number of bookings generated in memory before writing to database.
     PATCH_SIZE = 5000
@@ -130,10 +134,10 @@ def main():
     #
     # With 60 spaces:
     #     60 total
-    #     <= 10 unavailable
-    #     >= 50 available
+    #     <= 20 unavailable
+    #     >= 40 available
     #
-    MAX_ACTIVE_MAINTENANCE_SPACES = 10
+    MAX_ACTIVE_MAINTENANCE_SPACES = 20
     CANCELLATION_RATE = 0.20
     REJECTION_RATE = 0.10
 
@@ -696,12 +700,12 @@ def main():
         # =============================================================
 
         print(
-            "[5A] Generating ~1,500 SpaceMaintenance records..."
+            "[5A] Generating ~100000 SpaceMaintenance records..."
         )
 
         maintenance_data = []
 
-        for _ in range(1500):
+        for _ in range(100000):
 
             code = random.choice(
                 space_codes
@@ -928,7 +932,7 @@ def main():
         # =============================================================
 
         print(
-            "[5B] Generating ~1,500 FacilityMaintenance records..."
+            "[5B] Generating ~100000 FacilityMaintenance records..."
         )
 
         facility_maintenance_data = []
@@ -937,7 +941,7 @@ def main():
             facility_space_lookup.keys()
         )
 
-        for _ in range(1500):
+        for _ in range(100000):
 
             facility_id = random.choice(
                 facility_ids
@@ -1487,6 +1491,7 @@ def main():
                         participants,
                         status,
                         is_instant,
+                        1,
                         submitted_at.strftime(
                             '%Y-%m-%d %H:%M:%S'
                         )
@@ -1543,6 +1548,9 @@ def main():
                         NOT NULL,
 
                     is_instant_booking BIT
+                        NOT NULL,
+
+                    advisory_acknowledged BIT
                         NOT NULL,
 
                     submitted_at DATETIME2
@@ -1610,12 +1618,14 @@ def main():
                         expected_participants,
                         status,
                         is_instant_booking,
+                        advisory_acknowledged,
                         submitted_at
                     )
                     VALUES
                     (
                         ?, ?, ?, ?, ?,
-                        ?, ?, ?, ?, ?
+                        ?, ?, ?, ?, ?,
+                        ?
                     )
                     """,
                     batch
@@ -1653,6 +1663,7 @@ def main():
                         expected_participants,
                         status,
                         is_instant_booking,
+                        advisory_acknowledged,
                         submitted_at
                     )
 
@@ -1666,6 +1677,7 @@ def main():
                         src.expected_participants,
                         src.status,
                         src.is_instant_booking,
+                        src.advisory_acknowledged,
                         src.submitted_at
                     )
 
@@ -2628,19 +2640,25 @@ def main():
                     random.random() < 0.50
                 )
 
-                maintenance_start = (
-                    datetime(
-                        2026,
-                        8,
-                        1,
-                        random.randint(
-                            7,
-                            18
-                        ),
-                        random.choice(
-                            [0, 30]
-                        )
+                approval_time = (
+                    approved_space_latest_approval[code]
+                )
+
+                approval_date = approval_time.date()
+
+                maintenance_date = (
+                    approval_date
+                    + timedelta(
+                        days=random.randint(1, 7)
                     )
+                )
+
+                maintenance_start = datetime(
+                    maintenance_date.year,
+                    maintenance_date.month,
+                    maintenance_date.day,
+                    random.randint(7, 18),
+                    random.choice([0, 30])
                 )
 
                 if use_facility:

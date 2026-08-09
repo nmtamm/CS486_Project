@@ -91,5 +91,24 @@ GO
 -- Expected result: 7 rows, one per index created above.
 -- ============================================================================
 
+-- -- Disable indexes for testing purposes (optional):
+ --ALTER INDEX IX_SpaceBooking_Space_Status_Start ON dbo.SpaceBooking DISABLE;
+ --ALTER INDEX IX_SpaceBooking_Status_StartTime ON dbo.SpaceBooking DISABLE;
+ --ALTER INDEX IX_SpaceMaintenance_Space_Status_Impact ON dbo.SpaceMaintenance DISABLE;
+ --ALTER INDEX IX_FacilityMaintenance_Facility_Status_Impact ON dbo.FacilityMaintenance DISABLE;
+ --ALTER INDEX IX_CampusFacility_SpaceCode ON dbo.CampusFacility DISABLE;
+ --ALTER INDEX IX_CampusFacility_Type_Space ON dbo.CampusFacility DISABLE;
+ --ALTER INDEX IX_CampusSpace_Capacity_Status ON dbo.CampusSpace DISABLE;
+
+-- -- Enable indexes after testing (optional):
+ --ALTER INDEX IX_SpaceBooking_Space_Status_Start ON dbo.SpaceBooking REBUILD;
+ --ALTER INDEX IX_SpaceBooking_Status_StartTime ON dbo.SpaceBooking REBUILD;
+ --ALTER INDEX IX_SpaceMaintenance_Space_Status_Impact ON dbo.SpaceMaintenance REBUILD;
+ --ALTER INDEX IX_FacilityMaintenance_Facility_Status_Impact ON dbo.FacilityMaintenance
+ --REBUILD;
+ --ALTER INDEX IX_CampusFacility_SpaceCode ON dbo.CampusFacility REBUILD;
+ --ALTER INDEX IX_CampusFacility_Type_Space ON dbo.CampusFacility REBUILD;
+ --ALTER INDEX IX_CampusSpace_Capacity_Status ON dbo.CampusSpace REBUILD;
+
 PRINT N'Step 15 index-tuning script generated (NOT executed per instruction).';
 GO

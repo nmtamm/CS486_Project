@@ -226,7 +226,7 @@ and exists (select *
 
 select *
 from SpaceBooking
-where status = 'approved' and campus_space_code in (
+where status in('approved','checked_in') and campus_space_code in (
 	select distinct campus_space_code
 	from SpaceMaintenance
 	where notify_status = 'updated_to_out_of_service'

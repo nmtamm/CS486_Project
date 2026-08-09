@@ -57,15 +57,15 @@ The executable script `outputs/12-concurrency-implementation-G02.sql` creates th
 **SQL object behaviour:**
 
 - **Inputs:** `@requester_id INT`, `@campus_space_code NVARCHAR(20)`, `@requested_start_time DATETIME2`, `@requested_end_time DATETIME2`, `@purpose_type NVARCHAR(40)`, `@expected_participants INT`.
-- **Outputs:** `@space_booking_id INT` (new booking, `SCOPE_IDENTITY()`), `@result_status NVARCHAR(20)` (`'approved'` for instant booking, `'pending'` for staff workflow), `@advisories_notified BIT` (1 when active advisory maintenance on the space was notified during submission).
+- **Outputs:** `@space_booking_id INT` (new booking, `SCOPE_IDENTITY()`), `@result_status NVARCHAR(20)` (`'approved'` for instant booking, `'pending'` for staff workflow). The procedure also returns one **result set**: the space's facilities with `CampusFacility.status = 'available'` at submission time (BR-13) — the concrete list the requester is informed about, replacing the former `@advisories_notified BIT` output.
 - **Lock acquisition:** `sp_getapplock` on `N'Lock_Space_' + @campus_space_code`, `Exclusive`, lock owner `Transaction`, timeout 5000 ms. On result `< 0` it throws a clean "system busy, retry" error.
 - **Order of operations inside the lock (per 11 §4.1.3):**
-  1. **Capacity / space-state validation (BR-07, BR-02):** reads `CampusSpace.capacity`, `current_status`, `space_type`; rejects `temporarily_closed` / `retired` spaces and `expected_participants > capacity`.
-  2. **Blocking-state check (BR-02 / BR-09):** `SELECT ... FROM SpaceMaintenance WITH (UPDLOCK, HOLDLOCK)` for active (`reported`/`in_progress`) `impact_level = 'out_of_service'` records whose interval overlaps the requested window (half-open rule); rejects on match.
-  3. **Conditional advisory-notification side effect (BR-13):** `UPDATE ... FROM FacilityMaintenance WITH (UPDLOCK, HOLDLOCK) JOIN CampusFacility` for active `advisory` records of facilities in the requested space that overlap the window; when any row matches it sets `notify_status = 'updated_to_advisory'` atomically with the booking insert and sets `@advisories_notified = 1` (derived from `@@ROWCOUNT`). Advisory maintenance never blocks booking.
-  4. **Overlap check (BR-01 / BR-12):** `SELECT ... FROM SpaceBooking WITH (UPDLOCK, HOLDLOCK)` for approved-lifecycle bookings (`approved`, `checked_in`, `completed`, `no-show`) of the same space overlapping the requested window; rejects on match.
+  1. **Space-type lookup (BR-11):** reads `CampusSpace.space_type`; a `NULL` result throws "space does not exist". The **BR-07 capacity** check previously performed here is enforced by the migrated trigger `trg_SpaceBooking_CapacityCheck` (10 §7) at insert time, and the **BR-02 space-state** / **BR-09 maintenance** dimensions are covered by the combined `fn_IsSpaceAvailable` guard (step 4), so the separate capacity / space-state / maintenance throws are no longer emitted by the procedure.
+  2. **Conditional advisory-notification side effect (BR-13):** `UPDATE ... FROM FacilityMaintenance WITH (UPDLOCK, HOLDLOCK) JOIN CampusFacility` for active `advisory` records of facilities in the requested space that overlap the window; when any row matches it sets `notify_status = 'updated_to_advisory'` atomically with the booking insert. Advisory maintenance never blocks booking.
+  3. **Available-facility result set (BR-13):** `SELECT ... FROM CampusFacility WHERE campus_space_code = @campus_space_code AND status = 'available'` returns the space's currently available facilities to the caller — the concrete notification payload, replacing the former `@advisories_notified BIT` output.
+  4. **Overlap / availability guard (BR-01 / BR-12, BR-02 / BR-09):** `dbo.fn_IsSpaceAvailable` rejects the request when the space is `temporarily_closed`/`retired`, under active `out_of_service` maintenance (from `SpaceMaintenance` or `FacilityMaintenance`), or an approved-lifecycle booking (`approved`, `checked_in`, `completed`, `no-show`) of the same space overlaps the requested window. This is the concurrency-critical check (Steps 11–13): no trigger enforces booking overlap, so it runs inside the exclusive per-space application lock.
   5. **Policy lookup (BR-11):** reads `SpaceTypeBookingPolicy.instant_booking_eligible` for the space type; eligible ⇒ `@status = 'approved'`, `@is_instant = 1`; otherwise `@status = 'pending'`, `@is_instant = 0`.
-  6. **Insert:** `INSERT INTO SpaceBooking (...)` with `status`/`is_instant_booking` chosen so the existing trigger `trg_SpaceBooking_StatusTransition` accepts the row (staff ⇒ `pending`/0; instant ⇒ `approved`/1). `submitted_at` takes its `GETDATE()` default.
+  6. **Insert:** `INSERT INTO SpaceBooking (...)` with `status`/`is_instant_booking` chosen so the existing trigger `trg_SpaceBooking_StatusTransition` accepts the row (staff ⇒ `pending`/0; instant ⇒ `approved`/1). `advisory_acknowledged = 1` is written explicitly (BR-13): the requester is always informed of what is available for the space (steps 2–3) before the booking is finalized, so the acknowledgement is stored with every inserted booking. `submitted_at` takes its `GETDATE()` default.
 
 **Invariants upheld:** BR-01, BR-02, BR-07, BR-09, BR-11, BR-12, BR-13.
 
@@ -84,11 +84,9 @@ The executable script `outputs/12-concurrency-implementation-G02.sql` creates th
   - a rejected decision requires a non-empty `@rejection_reason` (BR-04).
 - **Lock acquisition:** `sp_getapplock` on `N'Lock_Space_' + @campus_space_code` (the space code is read from the target booking row), `Exclusive`, lock owner `Transaction`, timeout 5000 ms.
 - **Order of operations when `@decision = 'approved'` (per 11 §4.2 step 5):**
-  1. **Blocking-state re-check (BR-02 / BR-09):** `SELECT ... FROM SpaceMaintenance WITH (UPDLOCK, HOLDLOCK)` for active `out_of_service` maintenance overlapping the booking window; rejects on match.
-  2. **Overlap re-check (BR-01 / BR-12):** `SELECT ... FROM SpaceBooking WITH (UPDLOCK, HOLDLOCK)` for approved-lifecycle bookings of the same space overlapping the booking window (excluding this booking id); rejects on match.
-  3. `UPDATE SpaceBooking SET status = 'approved'` (the trigger validates the `pending → approved` transition).
-  4. `INSERT INTO BookingApproval (space_booking_id, staff_id, decision, decision_note)`.
-- **Order of operations when `@decision = 'rejected':`** `UPDATE SpaceBooking SET status = 'rejected'` and `INSERT INTO BookingApproval (... decision, decision_note, rejection_reason)`.
+  1. **Availability re-check (BR-02 / BR-09, BR-01 / BR-12):** the shared function `dbo.fn_IsSpaceAvailable` rejects the decision when the space is `temporarily_closed`/`retired`, under active `out_of_service` maintenance (from `SpaceMaintenance` or `FacilityMaintenance`) overlapping the booking window, or an approved-lifecycle booking of the same space overlaps the window (excluding this booking). This is the same guard `sp_SubmitSpaceBooking` uses (10 §7 function, §3.1 step 4) — the procedure does **not** re-define the inline maintenance/overlap queries.
+  2. `INSERT INTO BookingApproval (space_booking_id, staff_id, decision, decision_note)` — **no manual `UPDATE SpaceBooking`**: the trigger `trg_BookingApproval_UpdateBookingStatus` (10 §7) syncs `SpaceBooking.status` to `'approved'` (after re-validating `fn_IsSpaceAvailable`), and that status `UPDATE` re-fires `trg_SpaceBooking_StatusTransition`, which validates the `pending → approved` transition.
+- **Order of operations when `@decision = 'rejected'`:** `INSERT INTO BookingApproval (... decision, decision_note, rejection_reason)`; the trigger syncs `SpaceBooking.status` to `'rejected'`.
 
 **Invariants upheld:** BR-01, BR-02, BR-03, BR-04, BR-05, BR-09, BR-12.
 
@@ -124,7 +122,7 @@ The reproduction scripts in `outputs/11-reproduce-concurrency-error1-G02.sql` an
 **Prevention in `sp_SubmitSpaceBooking`:**
 
 1. Every submission first acquires the exclusive application lock `Lock_Space_B201` (11 §3.2). Two concurrent submissions for `B201` are therefore strictly **serialized**: the first holds the lock from the moment it checks availability until it commits; the second blocks in `sp_getapplock` (up to the 5 s timeout) and only proceeds after the first commits.
-2. Inside the lock, the overlap check `SELECT ... FROM SpaceBooking WITH (UPDLOCK, HOLDLOCK)` holds update-range locks on the booking rows of the space until commit. This is the second line of defence: even if some code path reached the overlap check without the application lock, a concurrent transaction's overlapping insert would be blocked by the range lock, and the check would see the committed/committing conflicting row.
+2. Inside the lock, the availability guard calls the shared function `fn_IsSpaceAvailable` (§3.1 step 4), which checks closed/retired, active `out_of_service` maintenance (from either source) overlapping the window, and approved-lifecycle overlap. It runs under the exclusive per-space application lock, so no competing submission can commit between the guard's read and the insert — the application lock is the guarantee. (The former second line of defence, range-lock hints on the overlap read, is retained only in `sp_EscalateSpaceMaintenance`'s affected-booking read, §4.2 point 3.)
 3. The status/is_instant combination written by the procedure satisfies `trg_SpaceBooking_StatusTransition`, so the insert completes without bypassing the migrated trigger.
 4. When the second transaction finally runs, its overlap check sees the first transaction's `approved` row and throws the BR-01/BR-12 error, rolling back. Re-running the Step 11 interleaving against the procedures yields exactly one successful `approved` booking.
 
@@ -136,8 +134,8 @@ The reproduction scripts in `outputs/11-reproduce-concurrency-error1-G02.sql` an
 
 1. Both procedures acquire the **same** application lock keyed by `campus_space_code` (`Lock_Space_A101`). Approval and escalation for the same space therefore cannot overlap: if escalation is in flight, the approval blocks in `sp_getapplock` until the escalation commits, and then the approval's **blocking-state re-check** (§3.2) sees the escalated `out_of_service` maintenance and rejects the approval.
 2. Conversely, if the approval acquires the lock first, the escalation waits; after the approval commits, the escalation's affected-booking identification (§3.3) includes the newly approved booking, and staff are handed the correct outreach list (BR-14).
-3. Inside the approval, the maintenance check uses `WITH (UPDLOCK, HOLDLOCK)`, so the maintenance range is locked until the approval commits and cannot be updated concurrently by an escalation that bypassed the application lock.
-4. The trigger `trg_SpaceMaintenance_UpdateSpaceStatus` keeps `CampusSpace.current_status` consistent within the escalation transaction, but booking availability itself is decided by the interval-based maintenance check, not by the convenience status attribute (09 §6.5).
+3. Inside the approval, the availability re-check calls the shared function `fn_IsSpaceAvailable`, which reads the maintenance/booking state; it runs under the exclusive per-space application lock (§3.2), so the check cannot observe a maintenance escalation or competing booking that commits after the lock is held. The escalation's own writes are serialized on the same application lock, so no concurrent escalation can slip between the approval's check and commit.
+4. The trigger `trg_SpaceMaintenance_UpdateSpaceStatus` keeps `CampusSpace.current_status` consistent within the escalation transaction, but booking availability itself is decided by the interval-based availability function, not by the convenience status attribute (09 §6.5).
 
 Re-running the Step 11 interleaving against the procedures: the approval after the escalation commit throws the BR-02/BR-09 error and the booking stays `pending`; only one of the two operations can succeed for a given state.
 
@@ -145,7 +143,7 @@ Re-running the Step 11 interleaving against the procedures: the approval after t
 
 - **Lock ordering:** the application lock on the parent resource (`campus_space_code`) is always acquired before any child rows (`SpaceBooking`, `SpaceMaintenance`, `FacilityMaintenance`, `BookingApproval`) are touched. No procedure ever nests a second application lock on a different space, so lock-acquisition order is globally consistent and circular waits are avoided (11 §3.3).
 - **Explicit timeout:** `sp_getapplock` uses `@LockTimeout = 5000`; a busy space fails fast with "system busy, retry" instead of blocking indefinitely.
-- **Isolation level:** the protection comes from application locks plus update-range hints under the default `READ COMMITTED`; no `SET TRANSACTION ISOLATION LEVEL` is required, matching the Step 11 chosen model (11 §3.2) and avoiding the deadlock/retry penalties of `SERIALIZABLE` and `SNAPSHOT`.
+- **Isolation level:** the protection comes from the exclusive per-space application locks plus the update-range hint on `sp_EscalateSpaceMaintenance`'s affected-booking read, under the default `READ COMMITTED`; no `SET TRANSACTION ISOLATION LEVEL` is required, matching the Step 11 chosen model (11 §3.2) and avoiding the deadlock/retry penalties of `SERIALIZABLE` and `SNAPSHOT`.
 
 ---
 
@@ -165,7 +163,7 @@ The examples below use real values from `outputs/06-sample-data-G02.sql` (migrat
 - **Submit a booking** (space `B201`, requester user 4):
 
   ```sql
-  DECLARE @id INT, @status NVARCHAR(20), @notified BIT;
+  DECLARE @id INT, @status NVARCHAR(20);
   EXEC dbo.sp_SubmitSpaceBooking
       @requester_id          = 4,
       @campus_space_code     = N'B201',
@@ -174,9 +172,10 @@ The examples below use real values from `outputs/06-sample-data-G02.sql` (migrat
       @purpose_type          = N'lecture',
       @expected_participants = 30,
       @space_booking_id      = @id OUTPUT,
-      @result_status         = @status OUTPUT,
-      @advisories_notified   = @notified OUTPUT;
-  SELECT @id AS booking_id, @status AS result_status, @notified AS notified;
+      @result_status         = @status OUTPUT;
+  SELECT @id AS booking_id, @status AS result_status;
+  -- The available-facility result set (CampusFacility rows with status =
+  -- 'available' for B201) is returned alongside the OUTPUT parameters.
   ```
 
 - **Approve / reject a booking** (staff user 2):

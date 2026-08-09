@@ -35,7 +35,7 @@ The concurrency control architecture must guarantee that the following business 
 
 3. **BR-13: Advisory Notification Invariant**
    When a booking is submitted for a space with active advisory-level maintenance (`FacilityMaintenance` records with `impact_level = 'advisory'` and `status IN ('reported', 'in_progress')`), the system must notify the requester. Notification processing updates `FacilityMaintenance.notify_status`. Advisory maintenance never blocks booking creation.
-   **Rule:** If a space has active advisory maintenance records during the requested window, the requester must be informed before the booking is finalized.
+   **Rule:** If a space has active advisory maintenance records during the requested window, the requester must be informed before the booking is finalized, and the acknowledgement must be recorded on the booking (`SpaceBooking.advisory_acknowledged = 1`). `sp_SubmitSpaceBooking` always informs the requester of what is available for the space, so the acknowledgement is stored with every booking it inserts.
 
 4. **BR-03 & BR-07: Lifecycle Transition and Capacity Invariants**
    - New bookings enter as `pending` (staff workflow, `is_instant_booking = 0`) or `approved` (instant booking workflow, `is_instant_booking = 1`).
@@ -238,7 +238,7 @@ sequenceDiagram
         else Policy Requires Staff Approval
             Note over SP: Set @status = 'pending', @is_instant = 0
         end
-        SP->>DB: INSERT INTO SpaceBooking (...)
+        SP->>DB: INSERT INTO SpaceBooking (... including advisory_acknowledged = 1)
         SP->>Lock: EXEC sp_releaseapplock ('Lock_Space_' + @space_code)
         SP->>DB: COMMIT TRANSACTION
         SP-->>Client: Success (booking_id, status)
@@ -251,7 +251,7 @@ sequenceDiagram
 - **Validation Queries:**
   - Range lock on maintenance: `SELECT ... FROM SpaceMaintenance WITH (UPDLOCK, HOLDLOCK) WHERE campus_space_code = @campus_space_code AND impact_level = 'out_of_service' AND status IN ('reported', 'in_progress') AND OverlapCondition`.
   - Range lock on bookings: `SELECT ... FROM SpaceBooking WITH (UPDLOCK, HOLDLOCK) WHERE campus_space_code = @campus_space_code AND status IN ('approved', 'checked_in', 'completed', 'no-show') AND OverlapCondition`.
-- **Atomic Modification:** `INSERT INTO SpaceBooking (...)`.
+- **Atomic Modification:** `INSERT INTO SpaceBooking (...)` including `advisory_acknowledged = 1` — the procedure always informs the requester of what is available for the space before finalizing the booking, so the BR-13 acknowledgement is stored with the booking at insert time.
 - **Invariant Guarantee:** Absolute protection against Error 1 (Double Allocation) and Error 2 (Booking during Maintenance).
 
 ---
@@ -270,13 +270,10 @@ Processes staff decision (`approved` or `rejected`) on a `pending` booking, ensu
   3. Validate `@status = 'pending'`. If not pending, rollback (prevents double approval / invalid transition).
   4. Acquire exclusive application lock on `@campus_space_code`.
   5. If `@decision = 'approved'`:
-     - Re-check for active `out_of_service` maintenance overlapping booking window using `WITH (UPDLOCK, HOLDLOCK)`. If found, rollback.
-     - Re-check for overlapping active bookings using `WITH (UPDLOCK, HOLDLOCK)`. If found, rollback.
-     - Execute `UPDATE SpaceBooking SET status = 'approved' WHERE space_booking_id = @space_booking_id`.
-     - Execute `INSERT INTO BookingApproval (space_booking_id, staff_id, decision, ...)`
+     - Re-check space availability using the shared function `fn_IsSpaceAvailable` (rejects when the space is closed/retired, under active `out_of_service` maintenance overlapping the window, or an overlapping approved-lifecycle booking exists). If unavailable, rollback.
+     - Execute `INSERT INTO BookingApproval (space_booking_id, staff_id, decision, ...)`. `SpaceBooking.status` is not updated manually — the trigger `trg_BookingApproval_UpdateBookingStatus` (10 §7) syncs it to `'approved'`.
   6. If `@decision = 'rejected'`:
-     - Execute `UPDATE SpaceBooking SET status = 'rejected' WHERE space_booking_id = @space_booking_id`.
-     - Execute `INSERT INTO BookingApproval (space_booking_id, staff_id, decision, rejection_reason, ...)`
+     - Execute `INSERT INTO BookingApproval (space_booking_id, staff_id, decision, rejection_reason, ...)`; the same trigger syncs `SpaceBooking.status` to `'rejected'`.
   7. Release application lock and `COMMIT TRANSACTION`.
 
 ---
@@ -308,7 +305,7 @@ The proposed concurrency control design maintains complete traceability back to 
 |---|---|---|---|
 | **BR-01 / BR-12** (No Overlap) | Race condition during concurrent instant submissions or staff approvals | `sp_getapplock` per space + `WITH (UPDLOCK, HOLDLOCK)` overlap check in `sp_SubmitSpaceBooking` | `12-concurrency-implementation-G02.sql` |
 | **BR-02 / BR-09** (Maintenance Blocking) | Concurrent staff approval during maintenance escalation | Serialized space locking in `sp_ApproveSpaceBooking` & `sp_EscalateSpaceMaintenance` | `12-concurrency-implementation-G02.sql` |
-| **BR-13** (Advisory Notification) | Stale advisory status during submission | Atomic advisory check and `FacilityMaintenance.notify_status` update inside locked `sp_SubmitSpaceBooking` | `12-concurrency-implementation-G02.sql` |
+| **BR-13** (Advisory Notification) | Stale advisory status during submission | Atomic advisory check and `FacilityMaintenance.notify_status` update inside locked `sp_SubmitSpaceBooking`; the acknowledgement is recorded on the booking (`SpaceBooking.advisory_acknowledged = 1`) | `12-concurrency-implementation-G02.sql` |
 | **BR-14** (Escalation Impact Analysis) | Phantom/dirty reads during affected booking identification | Range lock `WITH (UPDLOCK, HOLDLOCK)` inside `sp_EscalateSpaceMaintenance` | `12-concurrency-implementation-G02.sql` |
 | **BR-03 & BR-07** (Transitions & Capacity) | Concurrent double check-in / capacity violation | Enforced transactionally via `trg_SpaceBooking_StatusTransition` & `trg_SpaceBooking_CapacityCheck` | `10-schema-migration-G02.sql` / `12` |
 

@@ -4,13 +4,13 @@ This directory contains the complete sample data generation suite for **Phase 2*
 
 ## Output Deliverables
 
-| File Name | Description |
-| :--- | :--- |
-| **`reset_database_data.sql`** | T-SQL script to clean all data from database tables in strict reverse Foreign Key dependency order and reseed IDENTITY counters to 0. |
-| **`test_db_connection.py`** | Diagnostic Python script to test MS SQL Server connection parameters and confirm schema readiness of all 10 tables. |
-| **`generate_bulk_data.py`** | Core Python generator producing **100,000 `SpaceBooking` records**, **~50,000 `BookingApproval` records**, **~50,000 `SpaceUsageSession` records**, and prerequisite master data across 3 academic years (2023–2026). |
-| **`verify_data_integrity.sql`** | T-SQL verification report validating table counts, foreign key integrity (0 orphans), workflow consistency, and zero schedule overlaps. |
-| **`README.md`** | Usage instructions and architecture documentation. |
+| File Name                       | Description                                                                                                                                                                                                           |
+| :------------------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`reset_database_data.sql`**   | T-SQL script to clean all data from database tables in strict reverse Foreign Key dependency order and reseed IDENTITY counters to 0.                                                                                 |
+| **`test_db_connection.py`**     | Diagnostic Python script to test MS SQL Server connection parameters and confirm schema readiness of all 10 tables.                                                                                                   |
+| **`generate_bulk_data.py`**     | Core Python generator producing **100,000 `SpaceBooking` records**, **~50,000 `BookingApproval` records**, **~50,000 `SpaceUsageSession` records**, and prerequisite master data across 3 academic years (2023–2026). |
+| **`verify_data_integrity.sql`** | T-SQL verification report validating table counts, foreign key integrity (0 orphans), workflow consistency, and zero schedule overlaps.                                                                               |
+| **`README.md`**                 | Usage instructions and architecture documentation.                                                                                                                                                                    |
 
 ---
 
@@ -35,6 +35,13 @@ Create virtual environment and install required dependencies:
 ```cmd
 py -m venv .venv
 .\.venv\Scripts\python.exe -m pip install pyodbc faker
+```
+
+If you use remote SQL Server, create an `.env` file with the following structure:
+```bash
+server_name = "ip or localhost,port"
+user_name = "your user_name"
+password = "your password"
 ```
 
 ### Step 2: Ensure Target Database Schema Exists

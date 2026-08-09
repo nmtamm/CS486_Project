@@ -704,3 +704,21 @@ Implement required queries for necessary reporting:
 ## Model Usage
 
 **Big Pickle (from the default provider):** Used as the primary model.
+
+---
+
+# Student Work Report
+
+**Name:** Nguyễn Minh Tâm
+
+**Student ID:** 24125042
+
+**Task:** Schema update + Concurrency update + Add disable/rebuild option to Index
+
+## Tasks have been done
+1. Add one more column to `SpaceBooking` for this purpose: Such maintenance has impact level advisory: the space can still be booked, but the system must notify the requester of all active advisories on the space at booking time, and must record that the requester was informed (an acknowledgement stored with the booking). Also update related outputs
+2. Utilize already defined functions and triggers in `Step 12 - Concurrency Implementation`
+3. **`sp_ApproveSpaceBooking` now only records the staff decision** (`outputs/12-concurrency-implementation-G02.sql`) — removed both manual `UPDATE SpaceBooking SET status = 'approved' / 'rejected'` statements. The procedure only `INSERT`s into `BookingApproval`; `SpaceBooking.status` is synced by the existing trigger `trg_BookingApproval_UpdateBookingStatus` (`10-schema-migration-G02.sql`), which re-validates availability and re-fires the transition trigger.
+4. Removed stale references to the dropped `trg_SpaceBooking_AvailabilityCheck_Insert` (its insert-time check was folded into TRG-02).
+5. Add test for `dbo.sp_EscalateSpaceMaintenance` in `Step 13 - Concurrency Tests`
+6. Add disable and enable index in `Step 15 - Index tuning`

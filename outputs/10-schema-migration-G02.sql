@@ -164,7 +164,8 @@ GO
 
 
 -- ----------------------------------------------------------------------------
--- 1.6 SPACE BOOKING  (modified - new is_instant_booking attribute)
+-- 1.6 SPACE BOOKING  (modified - new is_instant_booking and
+--     advisory_acknowledged attributes)
 -- ----------------------------------------------------------------------------
 CREATE TABLE SpaceBooking (
     space_booking_id        INT           NOT NULL IDENTITY(1,1),
@@ -176,6 +177,7 @@ CREATE TABLE SpaceBooking (
     expected_participants   INT           NOT NULL,
     status                  NVARCHAR(20)  NOT NULL DEFAULT 'pending',
     is_instant_booking      BIT           NOT NULL DEFAULT 0,
+    advisory_acknowledged   BIT           NOT NULL DEFAULT 1,
     submitted_at            DATETIME2     NOT NULL DEFAULT GETDATE(),
 
     PRIMARY KEY (space_booking_id),
@@ -190,6 +192,7 @@ CREATE TABLE SpaceBooking (
         'checked_in', 'completed', 'no-show'
     )),
     CHECK (is_instant_booking IN (0, 1)),
+    CHECK (advisory_acknowledged IN (0, 1)),
     CHECK (expected_participants > 0),
     CHECK (requested_end_time > requested_start_time)
 );
@@ -742,10 +745,7 @@ GO
 -- The triggers created above are disabled for the duration of the migration so
 -- that historical records can be inserted with their original final statuses
 -- (the Phase 1 sample data achieved the same result through explicit UPDATE
--- transitions). In particular, trg_SpaceBooking_AvailabilityCheck_Insert is
--- disabled because some migrated bookings may overlap active out-of-service
--- maintenance on their space. Triggers are re-enabled after migration
--- completes.
+-- transitions). Triggers are re-enabled after migration completes.
 -- ============================================================================
 
 -- Disable migration-sensitive triggers
@@ -831,13 +831,16 @@ GO
 
 
 -- ----------------------------------------------------------------------------
--- 3.6 SPACE BOOKING  (TRANSFORM - new mandatory attribute is_instant_booking
---     defaulted to 0: every Phase 1 booking used the staff workflow; there was
---     no instant-booking path in Phase 1)
+-- 3.6 SPACE BOOKING  (TRANSFORM - new mandatory attributes is_instant_booking
+--     and advisory_acknowledged. is_instant_booking defaults to 0: every Phase 1
+--     booking used the staff workflow; there was no instant-booking path in
+--     Phase 1. advisory_acknowledged defaults to 1 (T6): sp_SubmitSpaceBooking
+--     always informs the requester of facility availability before finalizing a
+--     booking, so the acknowledgement is recorded for every migrated row)
 -- ----------------------------------------------------------------------------
 SET IDENTITY_INSERT SpaceBooking ON;
 GO
-INSERT INTO SpaceBooking (space_booking_id, requester_id, campus_space_code, requested_start_time, requested_end_time, purpose_type, expected_participants, status, is_instant_booking, submitted_at)
+INSERT INTO SpaceBooking (space_booking_id, requester_id, campus_space_code, requested_start_time, requested_end_time, purpose_type, expected_participants, status, is_instant_booking, advisory_acknowledged, submitted_at)
 SELECT space_booking_id,
        requester_id,
        campus_space_code,
@@ -847,6 +850,7 @@ SELECT space_booking_id,
        expected_participants,
        status,
        CAST(0 AS BIT),              -- new mandatory attribute default (staff workflow)
+       CAST(1 AS BIT),              -- new mandatory attribute default (T6: requester informed)
        submitted_at
 FROM SpaceBookingDB.dbo.SpaceBooking;
 GO
