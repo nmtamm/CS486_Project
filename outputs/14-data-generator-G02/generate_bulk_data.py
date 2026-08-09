@@ -357,7 +357,7 @@ def main():
 
         print(
             "[4/6] Generating 60 CampusSpaces "
-            "& 180 CampusFacilities..."
+            "& up to 1,800 CampusFacilities..."
         )
 
         spaces_data = []
@@ -571,21 +571,59 @@ def main():
 
         facilities_data = []
 
-        facility_types = [
+        unique_facility_types = [
             "Projector",
-            "Whiteboard",
             "Microphone System",
-            "Desktop Computers",
-            "Air Conditioner",
             "Sound System"
         ]
 
+        repeatable_facility_types = [
+            "Whiteboard",
+            "Desktop Computers",
+            "Air Conditioner"
+        ]
+
+        MAX_FACILITIES_PER_SPACE = 30
+
         for sc in space_codes:
 
-            for ftype in random.sample(
-                facility_types,
-                k=3
-            ):
+            # ---------------------------------------------------------
+            # Base facilities: one of each unique type per space.
+            #
+            # Projector, Microphone System and Sound System are
+            # installed at most once per space.
+            # ---------------------------------------------------------
+
+            for ftype in unique_facility_types:
+
+                facilities_data.append(
+                    (
+                        ftype,
+                        f"Standard facility for {sc}",
+                        sc,
+                        "available"
+                    )
+                )
+
+            # ---------------------------------------------------------
+            # Additional facilities: the remaining types may appear
+            # more than once per space.
+            #
+            # Total facilities per space is capped at 30.
+            # ---------------------------------------------------------
+
+            extra_count = random.randint(
+                0,
+                MAX_FACILITIES_PER_SPACE
+                - len(unique_facility_types)
+            )
+
+            for _ in range(extra_count):
+
+                ftype = random.choice(
+                    repeatable_facility_types
+                )
+
                 facilities_data.append(
                     (
                         ftype,

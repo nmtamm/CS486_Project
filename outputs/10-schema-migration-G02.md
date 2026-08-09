@@ -40,7 +40,7 @@ The Phase 1 schema (`05-db-definition-G02.sql`) contains 7 tables:
 |---|---|---|---|
 | `CampusUser` | `campus_user_id` | — | `UNIQUE (email)`; role / account_status CHECKs |
 | `CampusSpace` | `campus_space_code` | — | `UNIQUE (building, floor, room_number)`; space_type / current_status / capacity CHECKs |
-| `CampusFacility` | `campus_facility_id` | → `CampusSpace` | `UNIQUE (facility_name)`; status CHECK |
+| `CampusFacility` | `campus_facility_id` | → `CampusSpace` | status CHECK; Phase 1 `UNIQUE (facility_name)` **dropped** in Phase 2 (a facility type may repeat within a space) |
 | `SpaceBooking` | `space_booking_id` | → `CampusUser`, `CampusSpace` | purpose_type / status / expected_participants / time-interval CHECKs |
 | `BookingApproval` | `booking_approval_id` | → `SpaceBooking`, `CampusUser` | `UNIQUE (space_booking_id)`; decision / rejection_reason CHECKs |
 | `SpaceUsageSession` | `space_usage_session_id` | → `SpaceBooking`, `CampusUser` | `UNIQUE (space_booking_id)` |
@@ -86,7 +86,7 @@ Source: `outputs/09-updated-erd-and-logical-design-G02.md`, Sections 2 (Design D
 | Entity | Change | New / changed constraints |
 |---|---|---|
 | `CampusSpace` | `space_type` becomes FK → `SpaceTypeBookingPolicy.space_type` | FK (R11); same space_type domain CHECK |
-| `CampusFacility` | `facility_name` renamed → `facility_type`; `description` widened to `NVARCHAR(MAX)`; `status` widened to `NVARCHAR(30)` | `UNIQUE (facility_type)`; same status CHECK |
+| `CampusFacility` | `facility_name` renamed → `facility_type`; `description` widened to `NVARCHAR(MAX)`; `status` widened to `NVARCHAR(30)` | **unique key removed** — `facility_type` is no longer unique (a facility type may appear more than once per space); same status CHECK |
 | `SpaceBooking` | New attributes `is_instant_booking BIT NOT NULL DEFAULT 0` and `advisory_acknowledged BIT NOT NULL DEFAULT 1` | `CHECK (is_instant_booking IN (0,1))`; `CHECK (advisory_acknowledged IN (0,1))`; `purpose_type` widened to `NVARCHAR(40)` |
 | `SpaceMaintenance` | New attribute `impact_level`; new `notify_status` (Step 10 addition, see §7); `problem_type` domain reduced (removed `broken_projector`); interval consistency rules | `impact_level CHECK IN ('out_of_service','advisory')` default `out_of_service`; `notify_status CHECK IN ('nothing_to_notify','updated_to_advisory','updated_to_out_of_service')` default `nothing_to_notify`; `problem_type CHECK IN ('ac_failure','damaged_furniture','cleaning','network','other')`; `completion_time IS NULL OR completion_time > start_time`; `status='completed' ⇒ completion_time IS NOT NULL`; `status IN ('reported','in_progress') ⇒ completion_time IS NULL` |
 
@@ -127,7 +127,7 @@ Per-table decision and rationale (each maps back to 09 §3.2 / §4.2):
 
 | Old column | New column | Decision |
 |---|---|---|
-| `CampusFacility.facility_name` | `CampusFacility.facility_type` | **Rename** (same values, same UK) |
+| `CampusFacility.facility_name` | `CampusFacility.facility_type` | **Rename** (same values; the Phase 1 `UNIQUE (facility_name)` is not carried over — `facility_type` is no longer unique in Phase 2) |
 | — | `SpaceBooking.is_instant_booking` | **Generate default value** `0` (Phase 1 had no instant-booking path; every migrated booking used the staff workflow) |
 | — | `SpaceBooking.advisory_acknowledged` | **Generate default value** `1` (T6, §6.2) — `sp_SubmitSpaceBooking` always informs the requester of facility availability before finalizing a booking, so every booking records the acknowledgement (BR-13) |
 | — | `SpaceMaintenance.impact_level` | **Generate default value** `'out_of_service'` (09 §10: existing maintenance blocked booking, which equals Phase 2 `out_of_service`) |
@@ -240,7 +240,7 @@ Primary-key values are preserved wherever an `IDENTITY` column is migrated (`SET
 
 - **Primary keys:** created for all 10 tables (9 §4.3).
 - **Foreign keys:** `CampusSpace.space_type → SpaceTypeBookingPolicy.space_type` (R11); `FacilityMaintenance.campus_facility_id / reporter_id / assigned_staff_id` (R12–R14); all Phase 1 FKs retained unchanged.
-- **Unique keys:** `CampusUser.email`, `CampusSpace(building, floor, room_number)`, `CampusFacility.facility_type`, `BookingApproval.space_booking_id`, `SpaceUsageSession.space_booking_id`, `Semester(academic_year, semester_no)`.
+- **Unique keys:** `CampusUser.email`, `CampusSpace(building, floor, room_number)`, `BookingApproval.space_booking_id`, `SpaceUsageSession.space_booking_id`, `Semester(academic_year, semester_no)`. (`CampusFacility.facility_type` is **not** a unique key in Phase 2.)
 - **CHECK constraints:** all declared inline per table (see §4 and the SQL file), including the new `impact_level`, `notify_status` (on both `SpaceMaintenance` and `FacilityMaintenance`), `is_instant_booking`, `advisory_acknowledged` checks and the maintenance interval-consistency checks.
 - **TRIGGER constraints:** 5 triggers (see §7). TRG-02 additionally enforces the BR-11 instant-eligibility rule, the BR-02/BR-09 insert-time availability check via `fn_IsSpaceAvailable` (space not `temporarily_closed`/`retired`, no overlapping active `out_of_service` maintenance from either source), and the BR-02/BR-09 approval precondition (space not `temporarily_closed`/`retired`, no overlapping active out-of-service `FacilityMaintenance`) (Step 10 additions, §7).
 - **Deferred (Steps 11–13):** BR-01/BR-12 overlap invariant only — enforced transactionally per 09 §4.3, §6. BR-02/BR-09 space availability is enforced at insertion by TRG-02 via `fn_IsSpaceAvailable` (§7) and at approval by `sp_ApproveSpaceBooking` and `trg_BookingApproval_UpdateBookingStatus` (11 §4.2, 12 §3.2, §7) through the same shared function, complemented by TRG-02's approval precondition (§7). The Step 10 additions do not re-implement the overlap invariant.
@@ -255,7 +255,7 @@ The migration is validated against every constraint class listed in the step-10 
 |---|---|
 | Primary keys | grouped `COUNT(*) > 1` check per PK column → must return 0 rows |
 | Foreign keys | anti-join / `NOT EXISTS` queries per FK column → must return 0 rows |
-| UNIQUE keys | grouped checks on `email`, `facility_type`, `(academic_year, semester_no)` → must return 0 rows |
+| UNIQUE keys | grouped checks on `email`, `(academic_year, semester_no)` → must return 0 rows (`facility_type` is no longer unique in Phase 2) |
 | CHECK constraints | insert-time enforcement + post-check that no `problem_type` value lies outside the new domain; post-check that every `notify_status` matches the `trg_SpaceMaintenance_UpdateSpaceStatus` mapping (§7) — expect 0 rows; post-check that every migrated `SpaceBooking.advisory_acknowledged = 1` (T6) — expect 0 rows |
 | NOT NULL | all migrated mandatory columns are populated (mandatory attributes handled by §6.3) |
 | Triggers | disabled during migration, re-enabled after; integrity re-verified by the above queries |

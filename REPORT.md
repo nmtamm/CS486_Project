@@ -722,3 +722,17 @@ Implement required queries for necessary reporting:
 4. Removed stale references to the dropped `trg_SpaceBooking_AvailabilityCheck_Insert` (its insert-time check was folded into TRG-02).
 5. Add test for `dbo.sp_EscalateSpaceMaintenance` in `Step 13 - Concurrency Tests`
 6. Add disable and enable index in `Step 15 - Index tuning`
+
+---
+
+**Name:** Trịnh Võ Nam Kiệt
+
+**Student ID:** 24125013
+
+**Task:** Normalization Validation
+
+## Tasks have been done
+
+1. **Validated the Phase 2 schema normalization** — Reviewed all ten tables in `outputs/10-schema-migration-G02.sql` against 1NF, 2NF, 3NF, and BCNF requirements.
+2. **Documented functional dependencies and candidate keys** — Created `NORMAL.md` with per-table functional dependencies and normalization justifications.
+3. **Confirmed the overall result** — Determined that all ten tables satisfy BCNF under the functional dependencies supported by the SQL schema.

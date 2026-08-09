@@ -20,7 +20,7 @@ This directory contains the complete sample data generation suite for **Phase 2*
 * **`SpaceTypeBookingPolicy`**: 4 configuration rows (`auditorium`, `classroom`, `computer_lab`, `meeting_room`).
 * **`CampusUser`**: 2,500 active users (2,000 students, 350 lecturers, 100 TAs, 30 staff, 15 admins, 5 managers).
 * **`CampusSpace`**: 60 spaces (4 Auditoriums, 30 Classrooms, 16 Computer Labs, 10 Meeting Rooms).
-* **`CampusFacility`**: 180 equipment items.
+* **`CampusFacility`**: 3 to 30 equipment items per space (Projector, Microphone System, Sound System unique; Whiteboard, Desktop Computers, Air Conditioner repeatable) — up to ~1,800 items total.
 * **`SpaceMaintenance`**: 1,500 records (80% `advisory`, 20% `out_of_service`).
 * **`SpaceBooking`**: **100,000 records** (50% instant booking, 50% staff approval).
 * **`BookingApproval`**: **~50,000 records** for non-instant bookings.

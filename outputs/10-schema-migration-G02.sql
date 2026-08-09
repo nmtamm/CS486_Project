@@ -1029,8 +1029,6 @@ SELECT space_booking_id FROM SpaceBooking GROUP BY space_booking_id HAVING COUNT
 GO
 SELECT email FROM CampusUser GROUP BY email HAVING COUNT(*) > 1;
 GO
-SELECT facility_type FROM CampusFacility GROUP BY facility_type HAVING COUNT(*) > 1;
-GO
 SELECT academic_year, semester_no FROM Semester GROUP BY academic_year, semester_no HAVING COUNT(*) > 1;
 GO
 
