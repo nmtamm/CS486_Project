@@ -5,10 +5,10 @@
 -- Scenario: Concurrent Staff Approval vs. Maintenance Escalation (BR-02 Violation)
 --
 -- Sample Data Reference:
---   Space A101 = 'Main Auditorium', auditorium, capacity 200, status 'available'
---   User 2 = Trần Thị Bình (facility_staff) — approves the booking
---   User 3 = Lê Văn Cường (facility_staff) — escalates the maintenance
---   User 4 = Hoàng Thị Mai (lecturer) — reporter of maintenance
+--   Space C301 = 'Computer Lab Alpha', computer_lab, capacity 40, status 'available'
+--   User 2452 = (facility_staff) — approves the booking
+--   User 2451 = (facility_staff) — escalates the maintenance
+--   User 2001 = Hoàng Thị Mai (lecturer) — reporter of maintenance
 --   User 5 = Trương Minh Tâm (student) — booking requester
 -- ============================================================================
 
@@ -19,24 +19,24 @@ GO
 -- 1. SETUP (Run once before opening Session A and Session B)
 -- ----------------------------------------------------------------------------
 
--- Create a pending booking for Auditorium A101 (User 5, student)
+-- Create a pending booking for computer lab C301 (User 5, student)
 INSERT INTO SpaceBooking (
     requester_id, campus_space_code, requested_start_time, requested_end_time,
     purpose_type, expected_participants, status, is_instant_booking
 )
 VALUES (
-    5, 'A101', '2026-09-15 14:00:00', '2026-09-15 16:00:00',
-    'seminar', 100, 'pending', 0
+    5, 'C301', '2026-09-15 14:00:00', '2026-09-15 16:00:00',
+    'seminar', 30, 'pending', 0
 );
 
--- Create an active advisory maintenance record on A101
--- (reporter = User 4, assigned_staff = User 3)
+-- Create an active advisory maintenance record on C301
+-- (reporter = User 2001, assigned_staff = User 2451)
 INSERT INTO SpaceMaintenance (
     campus_space_code, reporter_id, assigned_staff_id, impact_level,
     problem_description, problem_type, start_time, completion_time, status
 )
 VALUES (
-    'A101', 4, 3, 'advisory',
+    'C301', 2001, 2451, 'advisory',
     'Faulty stage lighting system', 'other', '2026-09-15 13:00:00', NULL, 'in_progress'
 );
 
@@ -49,13 +49,13 @@ GO
 --    Execute these in order across two separate SSMS query windows.
 -- ----------------------------------------------------------------------------
 
--- [STEP A1 - Session A Window (User 2: Trần Thị Bình, facility_staff — approver)]
+-- [STEP A1 - Session A Window (user 2452, facility_staff — approver)]
 USE SpaceBookingDB_Phase2;
 GO
 BEGIN TRANSACTION;
 SELECT COUNT(*) AS OutOfServiceMaintCount
 FROM SpaceMaintenance
-WHERE campus_space_code = 'A101'
+WHERE campus_space_code = 'C301'
   AND status IN ('reported', 'in_progress')
   AND impact_level = 'out_of_service'
   AND start_time < '2026-09-15 16:00:00'
@@ -64,13 +64,13 @@ WHERE campus_space_code = 'A101'
 -- DO NOT COMMIT YET. Switch to Session B.
 
 
--- [STEP B1 - Session B Window (User 3: Lê Văn Cường, facility_staff — escalates)]
+-- [STEP B1 - Session B Window (user 2451, facility_staff — escalates)]
 USE SpaceBookingDB_Phase2;
 GO
 BEGIN TRANSACTION;
 UPDATE SpaceMaintenance
 SET impact_level = 'out_of_service'
-WHERE campus_space_code = 'A101'
+WHERE campus_space_code = 'C301'
   AND status IN ('reported', 'in_progress')
   AND impact_level = 'advisory';
 COMMIT TRANSACTION;
@@ -79,11 +79,11 @@ GO
 -- Switch back to Session A.
 
 
--- [STEP A2 - Session A Window (User 2 continues — approves the booking)]
+-- [STEP A2 - Session A Window (user 2452 continues — approves the booking)]
 DECLARE @TargetBookingID INT;
 SELECT TOP 1 @TargetBookingID = space_booking_id 
 FROM SpaceBooking 
-WHERE campus_space_code = 'A101' 
+WHERE campus_space_code = 'C301' 
   AND status = 'pending' 
   AND requested_start_time = '2026-09-15 14:00:00';
 
@@ -92,7 +92,7 @@ SET status = 'approved'
 WHERE space_booking_id = @TargetBookingID;
 
 INSERT INTO BookingApproval (space_booking_id, staff_id, decision, decision_time, decision_note)
-VALUES (@TargetBookingID, 2, 'approved', GETDATE(), N'Approved by staff');
+VALUES (@TargetBookingID, 2452, 'approved', GETDATE(), N'Approved by staff');
 
 COMMIT TRANSACTION;
 PRINT 'Session A approved the booking.';
@@ -110,7 +110,7 @@ SELECT
     m.space_maintenance_id, m.impact_level AS maint_impact_level, m.status AS maint_status
 FROM SpaceBooking b
 JOIN SpaceMaintenance m ON b.campus_space_code = m.campus_space_code
-WHERE b.campus_space_code = 'A101'
+WHERE b.campus_space_code = 'C301'
   AND b.requested_start_time = '2026-09-15 14:00:00'
   AND m.status IN ('reported', 'in_progress');
 -- VIOLATION OBSERVED: Booking is approved despite active out_of_service maintenance!

@@ -5,7 +5,7 @@
 -- Scenario: Concurrent Instant Booking Double-Allocation (BR-01 / BR-12 Violation)
 --
 -- Sample Data Reference:
---   Space B201 = 'Lecture Room 201', classroom, capacity 60, status 'available'
+--   Space B101 = 'Lecture Room 101', classroom, capacity 60, status 'available'
 --   User 4 = Hoàng Thị Mai (lecturer)
 --   User 5 = Trương Minh Tâm (student)
 -- ============================================================================
@@ -23,9 +23,9 @@ SET instant_booking_eligible = 1
 WHERE space_type = 'classroom';
 GO
 
--- Clean up any existing test bookings for space B201 on the target date
+-- Clean up any existing test bookings for space B101 on the target date
 DELETE FROM SpaceBooking 
-WHERE campus_space_code = 'B201' 
+WHERE campus_space_code = 'B101' 
   AND requested_start_time = '2026-09-10 10:00:00';
 GO
 
@@ -44,7 +44,7 @@ GO
 BEGIN TRANSACTION;
 SELECT COUNT(*) AS OverlapCount
 FROM SpaceBooking
-WHERE campus_space_code = 'B201'
+WHERE campus_space_code = 'B101'
   AND status IN ('approved', 'checked_in', 'completed', 'no-show')
   AND requested_start_time < '2026-09-10 12:00:00'
   AND requested_end_time > '2026-09-10 10:00:00';
@@ -58,7 +58,7 @@ GO
 BEGIN TRANSACTION;
 SELECT COUNT(*) AS OverlapCount
 FROM SpaceBooking
-WHERE campus_space_code = 'B201'
+WHERE campus_space_code = 'B101'
   AND status IN ('approved', 'checked_in', 'completed', 'no-show')
   AND requested_start_time < '2026-09-10 12:00:00'
   AND requested_end_time > '2026-09-10 10:00:00';
@@ -71,7 +71,7 @@ INSERT INTO SpaceBooking (
     purpose_type, expected_participants, status, is_instant_booking
 )
 VALUES (
-    5, 'B201', '2026-09-10 10:00:00', '2026-09-10 12:00:00',
+    5, 'B101', '2026-09-10 10:00:00', '2026-09-10 12:00:00',
     'seminar', 25, 'approved', 1
 );
 COMMIT TRANSACTION;
@@ -86,7 +86,7 @@ INSERT INTO SpaceBooking (
     purpose_type, expected_participants, status, is_instant_booking
 )
 VALUES (
-    4, 'B201', '2026-09-10 10:00:00', '2026-09-10 12:00:00',
+    4, 'B101', '2026-09-10 10:00:00', '2026-09-10 12:00:00',
     'lecture', 30, 'approved', 1
 );
 COMMIT TRANSACTION;
@@ -102,9 +102,9 @@ GO
 SELECT space_booking_id, requester_id, campus_space_code, 
        requested_start_time, requested_end_time, status, is_instant_booking
 FROM SpaceBooking
-WHERE campus_space_code = 'B201'
+WHERE campus_space_code = 'B101'
   AND requested_start_time = '2026-09-10 10:00:00';
--- VIOLATION OBSERVED: Two overlapping approved bookings exist for B201!
+-- VIOLATION OBSERVED: Two overlapping approved bookings exist for B101!
 -- Both requester_id 4 and 5 have 'approved' bookings at the same time.
 GO
 */

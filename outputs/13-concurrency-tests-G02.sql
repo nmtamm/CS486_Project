@@ -51,7 +51,7 @@ GO
 -- TEST 1 - Error 1: Concurrent Instant Booking Double-Allocation
 -- Invariant: BR-01 / BR-12  (Step 11 Section 2.1, Section 4.1)
 -- Procedure under test: dbo.sp_SubmitSpaceBooking
--- Space: B101 (Lecture Room 201, classroom, capacity 60, 'available')
+-- Space: B101 (Lecture Room 101, classroom, capacity 60, 'available')
 -- Users: 4 (Hoang Thi Mai, lecturer) and 5 (Truong Minh Tam, student)
 -- Window: 2026-09-10 10:00-12:00
 -- ============================================================================
@@ -209,7 +209,7 @@ VALUES (
 );
 
 -- Create the active advisory maintenance record on C301 (mirrors Step 11
--- reproduction setup: reporter user 4, assigned staff user 3).
+-- reproduction setup: reporter user 2001, assigned staff user 2451).
 INSERT INTO SpaceMaintenance (
     campus_space_code, reporter_id, assigned_staff_id, impact_level,
     problem_description, problem_type, start_time, completion_time, status

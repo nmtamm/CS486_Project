@@ -117,22 +117,22 @@ The reproduction scripts in `outputs/11-reproduce-concurrency-error1-G02.sql` an
 
 ### 4.1. Error 1 — Concurrent Instant Booking Double-Allocation (BR-01 / BR-12)
 
-**Step 11 §2.1 scenario:** Session A and Session B both check `SpaceBooking` for `B201` (both read `OverlapCount = 0`), then both insert an `approved` instant booking for the same `10:00–12:00` window. Both commit; the overlap invariant is violated.
+**Step 11 §2.1 scenario:** Session A and Session B both check `SpaceBooking` for `B101` (both read `OverlapCount = 0`), then both insert an `approved` instant booking for the same `10:00–12:00` window. Both commit; the overlap invariant is violated.
 
 **Prevention in `sp_SubmitSpaceBooking`:**
 
-1. Every submission first acquires the exclusive application lock `Lock_Space_B201` (11 §3.2). Two concurrent submissions for `B201` are therefore strictly **serialized**: the first holds the lock from the moment it checks availability until it commits; the second blocks in `sp_getapplock` (up to the 5 s timeout) and only proceeds after the first commits.
+1. Every submission first acquires the exclusive application lock `Lock_Space_B101` (11 §3.2). Two concurrent submissions for `B101` are therefore strictly **serialized**: the first holds the lock from the moment it checks availability until it commits; the second blocks in `sp_getapplock` (up to the 5 s timeout) and only proceeds after the first commits.
 2. Inside the lock, the availability guard calls the shared function `fn_IsSpaceAvailable` (§3.1 step 4), which checks closed/retired, active `out_of_service` maintenance (from either source) overlapping the window, and approved-lifecycle overlap. It runs under the exclusive per-space application lock, so no competing submission can commit between the guard's read and the insert — the application lock is the guarantee. (The former second line of defence, range-lock hints on the overlap read, is retained only in `sp_EscalateSpaceMaintenance`'s affected-booking read, §4.2 point 3.)
 3. The status/is_instant combination written by the procedure satisfies `trg_SpaceBooking_StatusTransition`, so the insert completes without bypassing the migrated trigger.
 4. When the second transaction finally runs, its overlap check sees the first transaction's `approved` row and throws the BR-01/BR-12 error, rolling back. Re-running the Step 11 interleaving against the procedures yields exactly one successful `approved` booking.
 
 ### 4.2. Error 2 — Concurrent Staff Approval vs. Maintenance Escalation (BR-02 / BR-09)
 
-**Step 11 §2.2 scenario:** Session A (staff approval) reads `OutOfServiceMaintCount = 0` for `A101`; Session B escalates an advisory maintenance to `out_of_service`; Session A then approves the booking. A booking ends up approved while the space is out of service.
+**Step 11 §2.2 scenario:** Session A (staff approval) reads `OutOfServiceMaintCount = 0` for `C301`; Session B escalates an advisory maintenance to `out_of_service`; Session A then approves the booking. A booking ends up approved while the space is out of service.
 
 **Prevention in `sp_ApproveSpaceBooking` + `sp_EscalateSpaceMaintenance`:**
 
-1. Both procedures acquire the **same** application lock keyed by `campus_space_code` (`Lock_Space_A101`). Approval and escalation for the same space therefore cannot overlap: if escalation is in flight, the approval blocks in `sp_getapplock` until the escalation commits, and then the approval's **blocking-state re-check** (§3.2) sees the escalated `out_of_service` maintenance and rejects the approval.
+1. Both procedures acquire the **same** application lock keyed by `campus_space_code` (`Lock_Space_C301`). Approval and escalation for the same space therefore cannot overlap: if escalation is in flight, the approval blocks in `sp_getapplock` until the escalation commits, and then the approval's **blocking-state re-check** (§3.2) sees the escalated `out_of_service` maintenance and rejects the approval.
 2. Conversely, if the approval acquires the lock first, the escalation waits; after the approval commits, the escalation's affected-booking identification (§3.3) includes the newly approved booking, and staff are handed the correct outreach list (BR-14).
 3. Inside the approval, the availability re-check calls the shared function `fn_IsSpaceAvailable`, which reads the maintenance/booking state; it runs under the exclusive per-space application lock (§3.2), so the check cannot observe a maintenance escalation or competing booking that commits after the lock is held. The escalation's own writes are serialized on the same application lock, so no concurrent escalation can slip between the approval's check and commit.
 4. The trigger `trg_SpaceMaintenance_UpdateSpaceStatus` keeps `CampusSpace.current_status` consistent within the escalation transaction, but booking availability itself is decided by the interval-based availability function, not by the convenience status attribute (09 §6.5).
@@ -160,13 +160,13 @@ Re-running the Step 11 interleaving against the procedures: the approval after t
 
 The examples below use real values from `outputs/06-sample-data-G02.sql` (migrated into `SpaceBookingDB_Phase2` by Step 10).
 
-- **Submit a booking** (space `B201`, requester user 4):
+- **Submit a booking** (space `B101`, requester user 4):
 
   ```sql
   DECLARE @id INT, @status NVARCHAR(20);
   EXEC dbo.sp_SubmitSpaceBooking
       @requester_id          = 4,
-      @campus_space_code     = N'B201',
+      @campus_space_code     = N'B101',
       @requested_start_time  = '2026-09-10 10:00:00',
       @requested_end_time    = '2026-09-10 12:00:00',
       @purpose_type          = N'lecture',
@@ -175,26 +175,26 @@ The examples below use real values from `outputs/06-sample-data-G02.sql` (migrat
       @result_status         = @status OUTPUT;
   SELECT @id AS booking_id, @status AS result_status;
   -- The available-facility result set (CampusFacility rows with status =
-  -- 'available' for B201) is returned alongside the OUTPUT parameters.
+  -- 'available' for B101) is returned alongside the OUTPUT parameters.
   ```
 
-- **Approve / reject a booking** (staff user 2):
+- **Approve / reject a booking** (staff user 2452):
 
   ```sql
   EXEC dbo.sp_ApproveSpaceBooking
       @space_booking_id = <booking_id>,
-      @staff_id         = 2,
+      @staff_id         = 2452,
       @decision         = N'approved',
       @decision_note    = N'Approved by staff';
   ```
 
-- **Escalate maintenance** (staff user 3):
+- **Escalate maintenance** (staff user 2451):
 
   ```sql
   DECLARE @cnt INT;
   EXEC dbo.sp_EscalateSpaceMaintenance
       @space_maintenance_id = <space_maintenance_id>,
-      @staff_id             = 3,
+      @staff_id             = 2451,
       @new_impact_level     = N'out_of_service',
       @affected_count       = @cnt OUTPUT;
   SELECT @cnt AS affected_approved_bookings;

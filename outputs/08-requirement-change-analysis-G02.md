@@ -70,7 +70,7 @@ The Facility Manager identified that not all maintenance makes a space unusable.
 
 ## 3. Relationships & Cardinalities
 
-No new relationships between entities are introduced. The existing structural relationships (R1–R10) remain unchanged in cardinality and participation.
+One new structural relationship is added (R12: `CampusFacility` ↔ `FacilityMaintenance`), plus one derived relationship (R15: out-of-service facility maintenance makes its containing space unavailable). The existing structural relationships (R1–R10) remain unchanged in cardinality and participation.
 
 The following relationships have **refined operational behaviour** based on the new requirement:
 
@@ -78,6 +78,8 @@ The following relationships have **refined operational behaviour** based on the 
 |---|---|---|---|---|---|
 | R2: CampusSpace ↔ SpaceBooking (is booked in) | **Modified** | Booking a space now depends on maintenance impact level (out-of-service blocks, advisory does not). Instant booking is added for classrooms and auditoriums. | New maintenance impact levels and instant booking rules refined when a space may be booked. | 1:N (unchanged) | Unchanged |
 | R8: CampusSpace ↔ SpaceMaintenance (undergoes) | **Modified** | Only out-of-service maintenance blocks new bookings. Advisory maintenance allows bookings with acknowledgement. | The blanket "under maintenance = unavailable" rule is replaced with the impact level distinction. | 1:N (unchanged) | Unchanged |
+| R12 (new): CampusFacility ↔ FacilityMaintenance (undergoes) | **New** | An active `FacilityMaintenance` record with `impact_level = 'out_of_service'` makes its `CampusFacility` under maintenance (status = `under_maintenance`). | Out-of-service maintenance affects the availability of the facility itself, which in turn affects the containing space (see R15). | 1:N | New |
+| R15 (new, derived): CampusSpace ↔ FacilityMaintenance (indirect via R3: CampusSpace contains CampusFacility) | **New** | An active `FacilityMaintenance` record with `impact_level = 'out_of_service'` for a `CampusFacility` located in a `CampusSpace` makes that space under maintenance, so the space cannot be booked during the maintenance interval. | Out-of-service facilities can render their containing space unavailable even when no `SpaceMaintenance` record exists; `CampusSpace.current_status` and booking availability must reflect facility maintenance. | 1:N (derived through R3 + FacilityMaintenance → CampusFacility) | New |
 
 ---
 
