@@ -77,11 +77,7 @@ GO
 -- Cover: campus_space_code
 -- ----------------------------------------------------------------------------
 CREATE NONCLUSTERED INDEX IX_SpaceMaintenance_NotifyStatus_Space
-ON dbo.SpaceMaintenance
-(
-    notify_status,
-    campus_space_code
-);
+ON dbo.SpaceMaintenance(notify_status,campus_space_code);
 GO
 
 -- ----------------------------------------------------------------------------
@@ -92,11 +88,7 @@ GO
 -- ----------------------------------------------------------------------------
 
 CREATE NONCLUSTERED INDEX IX_FacilityMaintenance_NotifyStatus_Facility
-ON dbo.FacilityMaintenance
-(
-    notify_status,
-    campus_facility_id
-);
+ON dbo.FacilityMaintenance(notify_status,campus_facility_id);
 GO
 
 -- ============================================================================
