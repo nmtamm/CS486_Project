@@ -10,12 +10,17 @@
 --   * dbo.sp_SubmitSpaceBooking      (against Step 11 Error 1, 11 Section 2.1)
 --   * dbo.sp_ApproveSpaceBooking     )
 --   * dbo.sp_EscalateSpaceMaintenance) against Step 11 Error 2, 11 Section 2.2
+--   * dbo.sp_EscalateSpaceMaintenance vs dbo.sp_SubmitSpaceBooking (TEST 3/3B:
+--     escalation racing an instant-booking submission on the same per-space
+--     application lock, BR-02/BR-09 + BR-14, 11 Section 3.3 lock-ordering)
 --
 -- INVARIANTS UNDER TEST:
 --   * BR-01 / BR-12  : at most one active booking per space per overlapping
 --                      time window (double-allocation prevention).
 --   * BR-02 / BR-09  : a booking may not be approved for a window overlapping
 --                      active out_of_service maintenance.
+--   * BR-13          : every booking inserted by sp_SubmitSpaceBooking records
+--                      the acknowledgement (advisory_acknowledged = 1).
 --   * BR-14          : escalation flags already-approved bookings that overlap
 --                      the maintenance period (staff outreach list).
 --
@@ -46,7 +51,7 @@ GO
 -- TEST 1 - Error 1: Concurrent Instant Booking Double-Allocation
 -- Invariant: BR-01 / BR-12  (Step 11 Section 2.1, Section 4.1)
 -- Procedure under test: dbo.sp_SubmitSpaceBooking
--- Space: B201 (Lecture Room 201, classroom, capacity 60, 'available')
+-- Space: B101 (Lecture Room 101, classroom, capacity 60, 'available')
 -- Users: 4 (Hoang Thi Mai, lecturer) and 5 (Truong Minh Tam, student)
 -- Window: 2026-09-10 10:00-12:00
 -- ============================================================================
@@ -63,10 +68,10 @@ WHERE space_type = N'classroom';
 -- Remove any leftover rows from a previous run of this script for the same
 -- window (the script is re-runnable).
 DELETE FROM SpaceBooking
-WHERE campus_space_code = N'B201'
+WHERE campus_space_code = N'B101'
   AND requested_start_time = '2026-09-10 10:00:00';
 
-PRINT 'TEST 1: precondition ready (classroom instant booking enabled, B201 window clean).';
+PRINT 'TEST 1: precondition ready (classroom instant booking enabled, B101 window clean).';
 GO
 
 -- ----------------------------------------------------------------------------
@@ -74,23 +79,30 @@ GO
 -- ----------------------------------------------------------------------------
 DECLARE @t1_bid   INT;
 DECLARE @t1_status NVARCHAR(20);
-DECLARE @t1_notified BIT;
 
 EXEC dbo.sp_SubmitSpaceBooking
     @requester_id          = 4,
-    @campus_space_code     = N'B201',
+    @campus_space_code     = N'B101',
     @requested_start_time  = '2026-09-10 10:00:00',
     @requested_end_time    = '2026-09-10 12:00:00',
     @purpose_type          = N'lecture',
     @expected_participants = 30,
     @space_booking_id      = @t1_bid OUTPUT,
-    @result_status         = @t1_status OUTPUT,
-    @advisories_notified   = @t1_notified OUTPUT;
+    @result_status         = @t1_status OUTPUT;
 
 IF @t1_status <> N'approved'
     THROW 59101, N'TEST 1 FAILED: first submission did not become an instant-approved booking.', 1;
 IF @t1_bid IS NULL
     THROW 59102, N'TEST 1 FAILED: first submission returned no booking id.', 1;
+
+-- Assertion 3 (BR-13): the inserted booking records that the requester was
+-- informed of facility availability at submission (advisory_acknowledged = 1).
+IF NOT EXISTS (
+    SELECT 1 FROM SpaceBooking
+    WHERE space_booking_id = @t1_bid
+      AND advisory_acknowledged = 1
+)
+    THROW 59105, N'TEST 1 FAILED: advisory_acknowledged is not 1 on the submitted booking (BR-13).', 1;
 
 PRINT 'TEST 1: Session 1 (user 4) submitted and was approved instantly (booking id ' + CAST(@t1_bid AS NVARCHAR(10)) + ').';
 GO
@@ -106,18 +118,16 @@ DECLARE @t1_op2_error INT = 0;
 BEGIN TRY
     DECLARE @t1_bid2   INT;
     DECLARE @t1_status2 NVARCHAR(20);
-    DECLARE @t1_notified2 BIT;
 
     EXEC dbo.sp_SubmitSpaceBooking
         @requester_id          = 5,
-        @campus_space_code     = N'B201',
+        @campus_space_code     = N'B101',
         @requested_start_time  = '2026-09-10 10:00:00',
         @requested_end_time    = '2026-09-10 12:00:00',
         @purpose_type          = N'seminar',
         @expected_participants = 25,
         @space_booking_id      = @t1_bid2 OUTPUT,
-        @result_status         = @t1_status2 OUTPUT,
-        @advisories_notified   = @t1_notified2 OUTPUT;
+        @result_status         = @t1_status2 OUTPUT;
 
     -- Reaching this line means the guard FAILED to reject the second booking.
     RAISERROR(N'TEST 1 FAILED: the conflicting instant booking was NOT rejected by sp_SubmitSpaceBooking.', 16, 1);
@@ -130,16 +140,16 @@ END CATCH;
 IF @t1_op2_error <> 50008
     THROW 59103, N'TEST 1 FAILED: expected error 50008 (BR-01/BR-12) was not raised by the conflicting submission.', 1;
 
--- Assertion 2: exactly one active booking overlaps the B201 window.
+-- Assertion 2: exactly one active booking overlaps the B101 window.
 IF (SELECT COUNT(*)
     FROM SpaceBooking
-    WHERE campus_space_code = N'B201'
+    WHERE campus_space_code = N'B101'
       AND status IN (N'approved', N'checked_in', N'completed', N'no-show')
       AND requested_start_time < '2026-09-10 12:00:00'
       AND requested_end_time > '2026-09-10 10:00:00') <> 1
-    THROW 59104, N'TEST 1 FAILED: BR-01/BR-12 overlap invariant does not hold for B201.', 1;
+    THROW 59104, N'TEST 1 FAILED: BR-01/BR-12 overlap invariant does not hold for B101.', 1;
 
-PRINT 'TEST 1 PASSED: conflicting instant submission rejected (error 50008) and only 1 active booking overlaps the B201 window.';
+PRINT 'TEST 1 PASSED: conflicting instant submission rejected (error 50008) and only 1 active booking overlaps the B101 window.';
 GO
 
 -- ----------------------------------------------------------------------------
@@ -147,7 +157,7 @@ GO
 --            policy to the migrated default (0).
 -- ----------------------------------------------------------------------------
 DELETE FROM SpaceBooking
-WHERE campus_space_code = N'B201'
+WHERE campus_space_code = N'B101'
   AND requested_start_time = '2026-09-10 10:00:00';
 
 UPDATE SpaceTypeBookingPolicy
@@ -164,8 +174,8 @@ GO
 -- Space: C301 (Computer Lab Alpha, computer_lab, capacity 40, 'available')
 --   (A101 cannot isolate this race in the migrated data: it already carries an
 --    open-ended out_of_service maintenance, space_maintenance_id = 6.)
--- Users: 2 (facility_staff, approver), 3 (facility_staff, escalation),
---        4 (lecturer, maintenance reporter), 5 (student, booking requester)
+-- Users: 2452 (facility_staff, approver), 2451 (facility_staff, escalation),
+--			2001 (lecturer, maintenance reporter), 5 (student, booking requester)
 -- Window: 2026-09-15 14:00-16:00 ; advisory maintenance 2026-09-15 13:00 (open)
 -- ============================================================================
 
@@ -199,13 +209,13 @@ VALUES (
 );
 
 -- Create the active advisory maintenance record on C301 (mirrors Step 11
--- reproduction setup: reporter user 4, assigned staff user 3).
+-- reproduction setup: reporter user 2001, assigned staff user 2451).
 INSERT INTO SpaceMaintenance (
     campus_space_code, reporter_id, assigned_staff_id, impact_level,
     problem_description, problem_type, start_time, completion_time, status
 )
 VALUES (
-    N'C301', 4, 3, N'advisory',
+    N'C301', 2001, 2451, N'advisory',
     N'Faulty stage lighting system', N'other', '2026-09-15 13:00:00', NULL, N'in_progress'
 );
 
@@ -230,7 +240,7 @@ IF @t2_mid IS NULL
 
 EXEC dbo.sp_EscalateSpaceMaintenance
     @space_maintenance_id = @t2_mid,
-    @staff_id             = 3,
+    @staff_id             = 2451,
     @new_impact_level     = N'out_of_service',
     @affected_count       = @t2_affected OUTPUT;
 
@@ -261,7 +271,7 @@ IF @t2_bid IS NULL
 BEGIN TRY
     EXEC dbo.sp_ApproveSpaceBooking
         @space_booking_id = @t2_bid,
-        @staff_id         = 2,
+        @staff_id         = 2452,
         @decision         = N'approved',
         @decision_note    = N'Approved by staff';
 
@@ -321,7 +331,7 @@ WHERE campus_space_code = N'C301'
 
 EXEC dbo.sp_EscalateSpaceMaintenance
     @space_maintenance_id = @t2_mid,
-    @staff_id             = 2,
+    @staff_id             = 2452,
     @new_impact_level     = N'advisory',
     @affected_count       = @t2b_cnt OUTPUT;
 
@@ -339,7 +349,7 @@ WHERE campus_space_code = N'C301'
 
 EXEC dbo.sp_ApproveSpaceBooking
     @space_booking_id = @t2_bid,
-    @staff_id         = 2,
+    @staff_id         = 2452,
     @decision         = N'approved',
     @decision_note    = N'Approved by staff';
 
@@ -380,7 +390,7 @@ WHERE campus_space_code = N'C301'
 INSERT INTO #t2b_affected
 EXEC dbo.sp_EscalateSpaceMaintenance
     @space_maintenance_id = @t2_mid,
-    @staff_id             = 2,
+    @staff_id             = 2452,
     @new_impact_level     = N'out_of_service',
     @affected_count       = @t2b_affected OUTPUT;
 
@@ -448,9 +458,9 @@ GO
 -- |                 | maintenance escalation                 |                      | + Section 4.3           |
 -- | TEST 2B         | complementary ordering of Error 2      | BR-14 (outreach)     | Section 4.3 step 6       |
 --
--- Error-number provenance: 50008 = sp_SubmitSpaceBooking overlap throw;
--- 50017 = sp_ApproveSpaceBooking maintenance throw (12-concurrency-
--- implementation-G02.sql).
+-- Error-number provenance: 50008 = sp_SubmitSpaceBooking throw (BR-01/BR-12
+-- overlap path, 12:122); 50017 = sp_ApproveSpaceBooking maintenance throw (12-concurrency-
+-- implementation-G02.sql); 50024 = sp_EscalateSpaceMaintenance applock-busy.
 -- ============================================================================
 
 PRINT 'Step 13 concurrency tests completed against SpaceBookingDB_Phase2.';

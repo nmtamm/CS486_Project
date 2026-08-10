@@ -33,6 +33,13 @@ Do not jump directly to DDL. The documents from the prior steps should be follow
 - `outputs/08-requirement-change-analysis-G02.md`
 - `outputs/09-update-erd-and-logical-design-G02.md`
 - `outputs/10-schema-migration-G02.md`
+- `outputs/11-concurrency-design-G02.md`
+- `outputs/12-concurrency-implementation-G02.sql`
+- `outputs/12-concurrency-implementation-G02.md`
+- `outputs/13-concurrency-tests-G02.md`
+- `outputs/13-concurrency-tests-G02.sql`
+- `outputs/15-index-tuning-G02.sql`
+- `outputs/15-index-tuning-G02.md`
 
 ## DBMS
 

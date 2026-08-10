@@ -35,7 +35,7 @@ The concurrency control architecture must guarantee that the following business 
 
 3. **BR-13: Advisory Notification Invariant**
    When a booking is submitted for a space with active advisory-level maintenance (`FacilityMaintenance` records with `impact_level = 'advisory'` and `status IN ('reported', 'in_progress')`), the system must notify the requester. Notification processing updates `FacilityMaintenance.notify_status`. Advisory maintenance never blocks booking creation.
-   **Rule:** If a space has active advisory maintenance records during the requested window, the requester must be informed before the booking is finalized.
+   **Rule:** If a space has active advisory maintenance records during the requested window, the requester must be informed before the booking is finalized, and the acknowledgement must be recorded on the booking (`SpaceBooking.advisory_acknowledged = 1`). `sp_SubmitSpaceBooking` always informs the requester of what is available for the space, so the acknowledgement is stored with every booking it inserts.
 
 4. **BR-03 & BR-07: Lifecycle Transition and Capacity Invariants**
    - New bookings enter as `pending` (staff workflow, `is_instant_booking = 0`) or `approved` (instant booking workflow, `is_instant_booking = 1`).
@@ -61,7 +61,7 @@ This section identifies **two critical concurrency errors / race conditions** th
 - **Involved Business Rules:** BR-01, BR-11, BR-12.
 - **Affected Entities:** `SpaceBooking`, `CampusSpace`, `SpaceTypeBookingPolicy`.
 - **Race Condition Description:**
-  Under peak registration (e.g., start of semester), User 4 (Hoàng Thị Mai, lecturer) and User 5 (Trương Minh Tâm, student) simultaneously submit instant booking requests for classroom `B201` (Lecture Room 201, capacity 60) for the overlapping time window `2026-09-10 10:00` to `2026-09-10 12:00`.
+  Under peak registration (e.g., start of semester), User 4 (Hoàng Thị Mai, lecturer) and User 5 (Trương Minh Tâm, student) simultaneously submit instant booking requests for classroom `B101` (Lecture Room 101, capacity 60) for the overlapping time window `2026-09-10 10:00` to `2026-09-10 12:00`.
   
   Under default `READ COMMITTED` isolation without explicit locking:
   1. Transaction A (User 4) checks for overlapping approved bookings in `SpaceBooking`. It reads `0` matching rows.
@@ -69,19 +69,19 @@ This section identifies **two critical concurrency errors / race conditions** th
   3. Transaction A executes `INSERT INTO SpaceBooking ... status = 'approved', is_instant_booking = 1` and commits.
   4. Transaction B executes `INSERT INTO SpaceBooking ... status = 'approved', is_instant_booking = 1` and commits.
   
-  **Result:** Two `approved` bookings exist for `B201` during `10:00–12:00`. The system violates invariant BR-12 (double allocation).
+  **Result:** Two `approved` bookings exist for `B101` during `10:00–12:00`. The system violates invariant BR-12 (double allocation).
 
 #### 2.1.2. Reproduction Script Reference
 The complete T-SQL reproduction script for Error 1 is maintained in a dedicated standalone file:
 - [11-reproduce-concurrency-error1-G02.sql](file:///c:/Users/Admin/Programming/CS486_Project/outputs/11-reproduce-concurrency-error1-G02.sql)
 
 The script is organized into three sections:
-1. **Setup Phase**: Enables classroom instant booking in `SpaceTypeBookingPolicy` and cleans up existing test records for space `B201` on the target date.
+1. **Setup Phase**: Enables classroom instant booking in `SpaceTypeBookingPolicy` and cleans up existing test records for space `B101` on the target date.
 2. **Interleaved Session Statements**:
-   - **Session A (Step A1)**: Opens a transaction and reads existing active bookings for `B201`. Returns `0` matching rows.
-   - **Session B (Step B1 & B2)**: Opens a concurrent transaction, reads `B201` availability (reads `0` rows as Session A is uncommitted), inserts an approved instant booking for User 5, and commits.
+   - **Session A (Step A1)**: Opens a transaction and reads existing active bookings for `B101`. Returns `0` matching rows.
+   - **Session B (Step B1 & B2)**: Opens a concurrent transaction, reads `B101` availability (reads `0` rows as Session A is uncommitted), inserts an approved instant booking for User 5, and commits.
    - **Session A (Step A2)**: Resumes, inserts an approved instant booking for User 4, and commits.
-3. **Verification Query**: Queries `SpaceBooking` for space `B201` on the target window, demonstrating two conflicting `approved` bookings.
+3. **Verification Query**: Queries `SpaceBooking` for space `B101` on the target window, demonstrating two conflicting `approved` bookings.
 
 #### 2.1.3. Step-by-Step Reproduction Instructions
 1. Open **SQL Server Management Studio (SSMS)** and connect to the SQL Server instance hosting `SpaceBookingDB_Phase2`.
@@ -92,7 +92,7 @@ The script is organized into three sections:
 6. In **Session B**, execute **STEP B1 & STEP B2** (`BEGIN TRANSACTION`, `SELECT COUNT(*)`, `INSERT`, and `COMMIT`). Observe `OverlapCount = 0` and Session B commits cleanly.
 7. Switch back to **Session A** and execute **STEP A2** (`INSERT` and `COMMIT`). Session A commits cleanly.
 8. Open a new Query Window and run the **Verification Query**.
-9. **Observed Failure:** Both Session A and Session B successfully inserted `approved` bookings for `B201` from `10:00` to `12:00`. BR-12 is violated.
+9. **Observed Failure:** Both Session A and Session B successfully inserted `approved` bookings for `B101` from `10:00` to `12:00`. BR-12 is violated.
 
 ---
 
@@ -103,27 +103,27 @@ The script is organized into three sections:
 - **Involved Business Rules:** BR-02, BR-09, BR-14.
 - **Affected Entities:** `SpaceBooking`, `SpaceMaintenance`, `CampusSpace`, `BookingApproval`.
 - **Race Condition Description:**
-  User 5 (Trương Minh Tâm, student) submits a booking request for auditorium `A101` (Main Auditorium, capacity 200) for `2026-09-15 14:00–16:00` (stored as `status = 'pending'`).
-  Later, Staff Member (User 2, Trần Thị Bình, facility_staff) opens the approval screen to approve this booking. Simultaneously, Facility Staff (User 3, Lê Văn Cường, facility_staff) escalates an active `advisory` maintenance record on `A101` to `out_of_service` for `2026-09-15 13:00–17:00`.
+  User 5 (Trương Minh Tâm, student) submits a booking request for computer lab `C301` (Computer Lab Alpha, capacity 40) for `2026-09-15 14:00–16:00` (stored as `status = 'pending'`).
+  Later, Staff Member (facility staff user 2452) opens the approval screen to approve this booking. Simultaneously, Facility Staff (facility staff user 2451) escalates an active `advisory` maintenance record on `C301` to `out_of_service` for `2026-09-15 13:00–17:00`.
   
   Under default `READ COMMITTED` execution:
-  1. Session A (User 2) checks if `A101` has active `out_of_service` maintenance during `14:00–16:00`. Because Session B has not committed its escalation update, Session A reads `0` matching rows.
-  2. Session B (User 3) executes `UPDATE SpaceMaintenance SET impact_level = 'out_of_service' WHERE space_maintenance_id = ...` and commits.
+  1. Session A (facility staff user 2452) checks if `C301` has active `out_of_service` maintenance during `14:00–16:00`. Because Session B has not committed its escalation update, Session A reads `0` matching rows.
+  2. Session B (facility staff user 2451) executes `UPDATE SpaceMaintenance SET impact_level = 'out_of_service' WHERE space_maintenance_id = ...` and commits.
   3. Session A proceeds to execute `UPDATE SpaceBooking SET status = 'approved' WHERE space_booking_id = ...` and inserts a `BookingApproval` record, then commits.
   
-  **Result:** Booking is approved for auditorium `A101` during a time window when `A101` is under `out_of_service` maintenance. Invariant BR-02 is violated.
+  **Result:** Booking is approved for computer lab `C301` during a time window when `C301` is under `out_of_service` maintenance. Invariant BR-02 is violated.
 
 #### 2.2.2. Reproduction Script Reference
 The complete T-SQL reproduction script for Error 2 is maintained in a dedicated standalone file:
 - [11-reproduce-concurrency-error2-G02.sql](file:///c:/Users/Admin/Programming/CS486_Project/outputs/11-reproduce-concurrency-error2-G02.sql)
 
 The script is organized into three sections:
-1. **Setup Phase**: Inserts a `pending` booking for auditorium `A101` (User 5, requester_id = 5) and an active `advisory` maintenance record (reporter_id = 4, assigned_staff_id = 3) covering the same time window.
+1. **Setup Phase**: Inserts a `pending` booking for computer lab `C301` (User 5, requester_id = 5) and an active `advisory` maintenance record (reporter_id = 2001, assigned_staff_id = 2451) covering the same time window.
 2. **Interleaved Session Statements**:
-   - **Session A (Step A1)**: Staff User 2 starts a transaction and checks active `out_of_service` maintenance for `A101`. Reads `0` matching rows.
-   - **Session B (Step B1)**: Staff User 3 starts a transaction, updates `SpaceMaintenance.impact_level` from `advisory` to `out_of_service`, and commits.
-   - **Session A (Step A2)**: Staff User 2 resumes, updates booking status to `approved`, inserts `BookingApproval` (staff_id = 2), and commits.
-3. **Verification Query**: Queries `SpaceBooking` and `SpaceMaintenance` for `A101`, demonstrating an `approved` booking overlapping an active `out_of_service` maintenance.
+   - **Session A (Step A1)**: Facility staff user 2452 starts a transaction and checks active `out_of_service` maintenance for `C301`. Reads `0` matching rows.
+   - **Session B (Step B1)**: Facility staff user 2451 starts a transaction, updates `SpaceMaintenance.impact_level` from `advisory` to `out_of_service`, and commits.
+   - **Session A (Step A2)**: Facility staff user 2452 resumes, updates booking status to `approved`, inserts `BookingApproval` (staff_id = 2452), and commits.
+3. **Verification Query**: Queries `SpaceBooking` and `SpaceMaintenance` for `C301`, demonstrating an `approved` booking overlapping an active `out_of_service` maintenance.
 
 #### 2.2.3. Step-by-Step Reproduction Instructions
 1. Open **SSMS** and execute the **Reproduction Setup for Error 2** script once.
@@ -238,7 +238,7 @@ sequenceDiagram
         else Policy Requires Staff Approval
             Note over SP: Set @status = 'pending', @is_instant = 0
         end
-        SP->>DB: INSERT INTO SpaceBooking (...)
+        SP->>DB: INSERT INTO SpaceBooking (... including advisory_acknowledged = 1)
         SP->>Lock: EXEC sp_releaseapplock ('Lock_Space_' + @space_code)
         SP->>DB: COMMIT TRANSACTION
         SP-->>Client: Success (booking_id, status)
@@ -251,7 +251,7 @@ sequenceDiagram
 - **Validation Queries:**
   - Range lock on maintenance: `SELECT ... FROM SpaceMaintenance WITH (UPDLOCK, HOLDLOCK) WHERE campus_space_code = @campus_space_code AND impact_level = 'out_of_service' AND status IN ('reported', 'in_progress') AND OverlapCondition`.
   - Range lock on bookings: `SELECT ... FROM SpaceBooking WITH (UPDLOCK, HOLDLOCK) WHERE campus_space_code = @campus_space_code AND status IN ('approved', 'checked_in', 'completed', 'no-show') AND OverlapCondition`.
-- **Atomic Modification:** `INSERT INTO SpaceBooking (...)`.
+- **Atomic Modification:** `INSERT INTO SpaceBooking (...)` including `advisory_acknowledged = 1` — the procedure always informs the requester of what is available for the space before finalizing the booking, so the BR-13 acknowledgement is stored with the booking at insert time.
 - **Invariant Guarantee:** Absolute protection against Error 1 (Double Allocation) and Error 2 (Booking during Maintenance).
 
 ---
@@ -270,13 +270,10 @@ Processes staff decision (`approved` or `rejected`) on a `pending` booking, ensu
   3. Validate `@status = 'pending'`. If not pending, rollback (prevents double approval / invalid transition).
   4. Acquire exclusive application lock on `@campus_space_code`.
   5. If `@decision = 'approved'`:
-     - Re-check for active `out_of_service` maintenance overlapping booking window using `WITH (UPDLOCK, HOLDLOCK)`. If found, rollback.
-     - Re-check for overlapping active bookings using `WITH (UPDLOCK, HOLDLOCK)`. If found, rollback.
-     - Execute `UPDATE SpaceBooking SET status = 'approved' WHERE space_booking_id = @space_booking_id`.
-     - Execute `INSERT INTO BookingApproval (space_booking_id, staff_id, decision, ...)`
+     - Re-check space availability using the shared function `fn_IsSpaceAvailable` (rejects when the space is closed/retired, under active `out_of_service` maintenance overlapping the window, or an overlapping approved-lifecycle booking exists). If unavailable, rollback.
+     - Execute `INSERT INTO BookingApproval (space_booking_id, staff_id, decision, ...)`. `SpaceBooking.status` is not updated manually — the trigger `trg_BookingApproval_UpdateBookingStatus` (10 §7) syncs it to `'approved'`.
   6. If `@decision = 'rejected'`:
-     - Execute `UPDATE SpaceBooking SET status = 'rejected' WHERE space_booking_id = @space_booking_id`.
-     - Execute `INSERT INTO BookingApproval (space_booking_id, staff_id, decision, rejection_reason, ...)`
+     - Execute `INSERT INTO BookingApproval (space_booking_id, staff_id, decision, rejection_reason, ...)`; the same trigger syncs `SpaceBooking.status` to `'rejected'`.
   7. Release application lock and `COMMIT TRANSACTION`.
 
 ---
@@ -284,18 +281,26 @@ Processes staff decision (`approved` or `rejected`) on a `pending` booking, ensu
 ### 4.3. Procedure 3: Maintenance Impact Escalation Protocol (`sp_EscalateSpaceMaintenance`)
 
 #### 4.3.1. Purpose & Scope
-Escalates a maintenance record's impact level from `advisory` to `out_of_service`, updates space status, and identifies all affected approved bookings for staff outreach (BR-14).
+Changes a maintenance record's impact level between `advisory` and `out_of_service`, updates space status, and identifies all affected approved/checked-in bookings for staff outreach (BR-14). The default `@new_impact_level = 'out_of_service'` implements escalation; passing `'advisory'` implements the Phase 2 downgrade direction.
 
 #### 4.3.2. Specification Details
-- **Input Parameters:** `@space_maintenance_id`, `@staff_id`.
+- **Input Parameters:**
+  - `@space_maintenance_id` — the maintenance record whose impact level is being changed.
+  - `@staff_id` — the facility staff member performing the operation.
+  - `@new_impact_level NVARCHAR(20) = 'out_of_service'` — the target impact level; must be `'out_of_service'` or `'advisory'` (matches the schema CHECK constraint). Defaults to `'out_of_service'` (escalation) and also supports the downgrade direction.
+  - `@affected_count INT OUTPUT` — number of approved/checked-in bookings overlapping the maintenance interval; the affected rows are also returned as a result set (BR-14 outreach).
+- **Pre-lock Validation:**
+  - `@new_impact_level` must be `'out_of_service'` or `'advisory'`.
+  - The maintenance record must exist and be open (`status IN ('reported', 'in_progress')`); completed/cancelled records cannot change impact level.
+  - `@staff_id` must exist with role `facility_staff` or `facility_manager`.
 - **Execution Protocol:**
   1. `BEGIN TRANSACTION`
-  2. Read maintenance record details: `SELECT @campus_space_code = campus_space_code, @current_impact = impact_level FROM SpaceMaintenance WHERE space_maintenance_id = @space_maintenance_id`.
-  3. Acquire exclusive application lock on `@campus_space_code`.
+  2. Read maintenance record details: `SELECT @campus_space_code = campus_space_code, @current_impact = impact_level, @maint_status = status, @start_time = start_time, @completion_time = completion_time FROM SpaceMaintenance WHERE space_maintenance_id = @space_maintenance_id`.
+  3. Acquire exclusive application lock on `@campus_space_code` (lock resource `N'Lock_Space_' + @campus_space_code`, timeout 5000 ms).
   4. Update maintenance impact:  
-     `UPDATE SpaceMaintenance SET impact_level = 'out_of_service' WHERE space_maintenance_id = @space_maintenance_id`.
-  5. Trigger `trg_SpaceMaintenance_UpdateSpaceStatus` automatically fires within the transaction, setting `CampusSpace.current_status = 'under_maintenance'`.
-  6. Query and return affected approved/checked-in bookings overlapping the maintenance window using `WITH (UPDLOCK, HOLDLOCK)` range locks for staff notification (BR-14 impact analysis set).
+     `UPDATE SpaceMaintenance SET impact_level = @new_impact_level WHERE space_maintenance_id = @space_maintenance_id`.
+  5. Trigger `trg_SpaceMaintenance_UpdateSpaceStatus` automatically fires within the transaction, setting `CampusSpace.current_status = 'under_maintenance'` when escalated to `out_of_service`.
+  6. Query and return affected approved/checked-in bookings overlapping the maintenance window using `WITH (UPDLOCK, HOLDLOCK)` range locks for staff notification (BR-14 impact analysis set), treating `completion_time IS NULL` as an open-ended interval `[start_time, +infinity)`; set `@affected_count = @@ROWCOUNT`.
   7. Release application lock and `COMMIT TRANSACTION`.
 
 ---
@@ -308,7 +313,7 @@ The proposed concurrency control design maintains complete traceability back to 
 |---|---|---|---|
 | **BR-01 / BR-12** (No Overlap) | Race condition during concurrent instant submissions or staff approvals | `sp_getapplock` per space + `WITH (UPDLOCK, HOLDLOCK)` overlap check in `sp_SubmitSpaceBooking` | `12-concurrency-implementation-G02.sql` |
 | **BR-02 / BR-09** (Maintenance Blocking) | Concurrent staff approval during maintenance escalation | Serialized space locking in `sp_ApproveSpaceBooking` & `sp_EscalateSpaceMaintenance` | `12-concurrency-implementation-G02.sql` |
-| **BR-13** (Advisory Notification) | Stale advisory status during submission | Atomic advisory check and `FacilityMaintenance.notify_status` update inside locked `sp_SubmitSpaceBooking` | `12-concurrency-implementation-G02.sql` |
+| **BR-13** (Advisory Notification) | Stale advisory status during submission | Atomic advisory check and `FacilityMaintenance.notify_status` update inside locked `sp_SubmitSpaceBooking`; the acknowledgement is recorded on the booking (`SpaceBooking.advisory_acknowledged = 1`) | `12-concurrency-implementation-G02.sql` |
 | **BR-14** (Escalation Impact Analysis) | Phantom/dirty reads during affected booking identification | Range lock `WITH (UPDLOCK, HOLDLOCK)` inside `sp_EscalateSpaceMaintenance` | `12-concurrency-implementation-G02.sql` |
 | **BR-03 & BR-07** (Transitions & Capacity) | Concurrent double check-in / capacity violation | Enforced transactionally via `trg_SpaceBooking_StatusTransition` & `trg_SpaceBooking_CapacityCheck` | `10-schema-migration-G02.sql` / `12` |
 

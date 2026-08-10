@@ -20,9 +20,11 @@
 --   * Exclusive application lock per campus space: sp_getapplock on
 --     resource N'Lock_Space_' + @campus_space_code, lock owner 'Transaction',
 --     timeout 5000 ms. Serializes all write workflows per space while
---     operations on different spaces run in parallel.
---   * Key-range update lock hints WITH (UPDLOCK, HOLDLOCK) on SpaceBooking
---     and SpaceMaintenance inside the locked section.
+--     operations on different spaces run in parallel. All availability and
+--     overlap re-checks reuse the shared function fn_IsSpaceAvailable
+--     (10-schema-migration-G02.sql) inside the locked section.
+--   * Key-range update lock hint WITH (UPDLOCK, HOLDLOCK) on the affected
+--     SpaceBooking read inside sp_EscalateSpaceMaintenance (BR-14 outreach).
 --
 -- PREREQUISITES: run in order
 --   1) 05-db-definition-G02.sql  (Phase 1 database SpaceBookingDB)
@@ -56,8 +58,7 @@ CREATE PROCEDURE dbo.sp_SubmitSpaceBooking
     @purpose_type          NVARCHAR(40),
     @expected_participants INT,
     @space_booking_id      INT            OUTPUT,
-    @result_status         NVARCHAR(20)   OUTPUT,
-    @advisories_notified   BIT            OUTPUT
+    @result_status         NVARCHAR(20)   OUTPUT
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -72,8 +73,6 @@ BEGIN
         OR @requested_end_time <= @requested_start_time
         THROW 50002, N'Invalid input: requested_end_time must be after requested_start_time.', 1;
 
-    DECLARE @space_capacity  INT;
-    DECLARE @space_status    NVARCHAR(30);
     DECLARE @space_type      NVARCHAR(30);
     DECLARE @lock_resource   NVARCHAR(255) = N'Lock_Space_' + @campus_space_code;
     DECLARE @lock_result     INT;
@@ -95,66 +94,36 @@ BEGIN
         IF @lock_result < 0
             THROW 50003, N'System busy: another operation holds the lock on this space. Please retry.', 1;
 
-        -- 2. Upper-bound / capacity and space-state validation (BR-07, BR-02)
-        SELECT @space_capacity = cs.capacity,
-               @space_status   = cs.current_status,
-               @space_type     = cs.space_type
+        -- 2. Space-type lookup (BR-11). 
+        SELECT @space_type = cs.space_type
         FROM CampusSpace AS cs
         WHERE cs.campus_space_code = @campus_space_code;
 
-        IF @space_capacity IS NULL
+        IF @space_type IS NULL
             THROW 50004, N'Space does not exist.', 1;
 
-        IF @space_status IN (N'temporarily_closed', N'retired')
-            THROW 50005, N'BR-02 violation: space is temporarily closed or retired and cannot be booked.', 1;
+        -- 3. Display set of available facilities for the space (BR-13).
 
-        IF @expected_participants > @space_capacity
-            THROW 50006, N'BR-07 violation: expected participants exceed the capacity of the space.', 1;
-
-        -- 3. Blocking-state check (BR-02 / BR-09):
-        --    active out_of_service maintenance whose interval overlaps the
-        --    requested booking period (half-open interval rule).
-        IF EXISTS (
-            SELECT 1
-            FROM SpaceMaintenance AS sm WITH (UPDLOCK, HOLDLOCK)
-            WHERE sm.campus_space_code = @campus_space_code
-              AND sm.status IN (N'reported', N'in_progress')
-              AND sm.impact_level = N'out_of_service'
-              AND sm.start_time < @requested_end_time
-              AND (sm.completion_time IS NULL OR sm.completion_time > @requested_start_time)
-        )
-            THROW 50007, N'BR-02/BR-09 violation: space is under out-of-service maintenance overlapping the requested period.', 1;
-
-        -- 4. Conditional advisory notification side effect (BR-13).
-        --    Advisory maintenance never blocks booking; when active advisory
-        --    FacilityMaintenance records overlap the requested window, the
-        --    requester is informed and notify_status is updated atomically
-        --    with the booking insert. @@ROWCOUNT distinguishes notify vs. no-op.
-        UPDATE fm
-        SET notify_status = N'updated_to_advisory'
-        FROM FacilityMaintenance AS fm WITH (UPDLOCK, HOLDLOCK)
-        JOIN CampusFacility AS cf ON fm.campus_facility_id = cf.campus_facility_id
+        SELECT cf.campus_facility_id,
+               cf.facility_type,
+               cf.description,
+               cf.status
+        FROM CampusFacility AS cf
         WHERE cf.campus_space_code = @campus_space_code
-          AND fm.status IN (N'reported', N'in_progress')
-          AND fm.impact_level = N'advisory'
-          AND fm.start_time < @requested_end_time
-          AND (fm.completion_time IS NULL OR fm.completion_time > @requested_start_time);
+          AND cf.status = N'available';
 
-        SET @advisories_notified = CASE WHEN @@ROWCOUNT > 0 THEN 1 ELSE 0 END;
+        -- 4. Overlap / availability guard (BR-01 / BR-12, BR-02 / BR-09):
+        IF dbo.fn_IsSpaceAvailable(
+			   @campus_space_code,
+			   @requested_start_time,
+			   @requested_end_time,
+			   NULL
+		   ) = 0
+			THROW 50008,
+				  N'BR-01/BR-12 violation: the requested period conflicts with an existing booking or the space is unavailable.',
+				  1;
 
-        -- 5. Overlap check (BR-01 / BR-12): approved-lifecycle bookings of
-        --    the same space overlapping the requested window.
-        IF EXISTS (
-            SELECT 1
-            FROM SpaceBooking AS sb WITH (UPDLOCK, HOLDLOCK)
-            WHERE sb.campus_space_code = @campus_space_code
-              AND sb.status IN (N'approved', N'checked_in', N'completed', N'no-show')
-              AND sb.requested_start_time < @requested_end_time
-              AND sb.requested_end_time > @requested_start_time
-        )
-            THROW 50008, N'BR-01/BR-12 violation: an approved booking already overlaps the requested period for this space.', 1;
-
-        -- 6. Policy lookup (BR-11): decide instant vs staff approval.
+        -- 5. Policy lookup (BR-11): decide instant vs staff approval.
         SELECT @instant_eligible = p.instant_booking_eligible
         FROM SpaceTypeBookingPolicy AS p
         WHERE p.space_type = @space_type;
@@ -173,9 +142,7 @@ BEGIN
             SET @is_instant = 0;
         END;
 
-        -- 7. Insert the booking. status/is_instant_booking are written so
-        --    that trg_SpaceBooking_StatusTransition accepts the row
-        --    (staff workflow => pending/0; instant => approved/1).
+        -- 6. Insert the booking. 
         INSERT INTO SpaceBooking
         (
             requester_id,
@@ -185,7 +152,8 @@ BEGIN
             purpose_type,
             expected_participants,
             status,
-            is_instant_booking
+            is_instant_booking,
+            advisory_acknowledged
         )
         VALUES
         (
@@ -196,7 +164,8 @@ BEGIN
             @purpose_type,
             @expected_participants,
             @status,
-            @is_instant
+            @is_instant,
+            1
         );
 
         SET @space_booking_id = SCOPE_IDENTITY();
@@ -284,36 +253,16 @@ BEGIN
 
         IF @decision = N'approved'
         BEGIN
-            -- 2. Blocking-state re-check (BR-02 / BR-09): active
-            --    out_of_service maintenance overlapping the booking window.
-            IF EXISTS (
-                SELECT 1
-                FROM SpaceMaintenance AS sm WITH (UPDLOCK, HOLDLOCK)
-                WHERE sm.campus_space_code = @campus_space_code
-                  AND sm.status IN (N'reported', N'in_progress')
-                  AND sm.impact_level = N'out_of_service'
-                  AND sm.start_time < @requested_end_time
-                  AND (sm.completion_time IS NULL OR sm.completion_time > @requested_start_time)
-            )
-                THROW 50017, N'BR-02/BR-09 violation: space is under out-of-service maintenance overlapping the booking period.', 1;
+            -- 2. Availability re-check (BR-02 / BR-09, BR-01 / BR-12):
+            IF dbo.fn_IsSpaceAvailable(
+                   @campus_space_code,
+                   @requested_start_time,
+                   @requested_end_time,
+                   @space_booking_id
+               ) = 0
+                THROW 50017, N'BR-02/BR-09 violation: the space is unavailable for the requested period (closed/retired, out-of-service maintenance, or an overlapping approved booking).', 1;
 
-            -- 3. Overlap re-check (BR-01 / BR-12).
-            IF EXISTS (
-                SELECT 1
-                FROM SpaceBooking AS sb WITH (UPDLOCK, HOLDLOCK)
-                WHERE sb.campus_space_code = @campus_space_code
-                  AND sb.status IN (N'approved', N'checked_in', N'completed', N'no-show')
-                  AND sb.requested_start_time < @requested_end_time
-                  AND sb.requested_end_time > @requested_start_time
-                  AND sb.space_booking_id <> @space_booking_id
-            )
-                THROW 50018, N'BR-01/BR-12 violation: an approved booking already overlaps the requested period for this space.', 1;
-
-            -- 4. Approve the booking and record the staff decision.
-            UPDATE SpaceBooking
-            SET status = N'approved'
-            WHERE space_booking_id = @space_booking_id;
-
+            -- 3. Record the staff decision. 
             INSERT INTO BookingApproval
             (
                 space_booking_id,
@@ -331,12 +280,6 @@ BEGIN
         END
         ELSE
         BEGIN
-            -- Reject the booking and record the staff decision with the
-            -- mandatory rejection reason.
-            UPDATE SpaceBooking
-            SET status = N'rejected'
-            WHERE space_booking_id = @space_booking_id;
-
             INSERT INTO BookingApproval
             (
                 space_booking_id,

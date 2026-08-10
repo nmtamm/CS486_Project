@@ -56,19 +56,19 @@ For each Step 11 error: the invariant violated, the procedures involved, and the
 - **Step 11 reference:** §2.1 (error), §4.1 (`sp_SubmitSpaceBooking` specification).
 - **Invariant verified:** BR-01 / BR-12 (overlap prevention). Re-stated in Step 11 §1.2 rule 1.
 - **Procedure under test:** `dbo.sp_SubmitSpaceBooking` only.
-- **Scenario (real sample values):** space `B201` (Lecture Room 201, classroom, capacity 60, `current_status = 'available'`), requester user 4 (Hoàng Thị Mai, lecturer) and user 5 (Trương Minh Tâm, student), target window `2026-09-10 10:00–12:00`.
+- **Scenario (real sample values):** space `B101` (Lecture Room 101, classroom, capacity 60, `current_status = 'available'`), requester user 4 (Hoàng Thị Mai, lecturer) and user 5 (Trương Minh Tâm, student), target window `2026-09-10 10:00–12:00`.
 - **Precondition:** `SpaceTypeBookingPolicy.instant_booking_eligible = 1` for `classroom` (BR-11 instant eligibility; mirrors the Step 11 reproduction setup).
-- **Interleaving re-run (Step 11 §2.1):** in the un-isolated reproduction, Session A and Session B both read `OverlapCount = 0` and both commit an `approved` instant booking. Through the procedure, Session 1's submission acquires `Lock_Space_B201`, commits its `approved` booking, and releases the lock; Session 2's submission then acquires the same lock, re-runs the overlap check, sees Session 1's committed booking, and throws.
-- **Expected outcome (guard in place):** Session 1 returns `status = 'approved'` with a valid `space_booking_id`; Session 2 is rejected with error **50008** (`BR-01/BR-12 violation: an approved booking already overlaps the requested period for this space`); exactly **one** approved-lifecycle booking overlaps the window.
+- **Interleaving re-run (Step 11 §2.1):** in the un-isolated reproduction, Session A and Session B both read `OverlapCount = 0` and both commit an `approved` instant booking. Through the procedure, Session 1's submission acquires `Lock_Space_B101`, commits its `approved` booking, and releases the lock; Session 2's submission then acquires the same lock, re-runs the overlap check, sees Session 1's committed booking, and throws.
+- **Expected outcome (guard in place):** Session 1 returns `status = 'approved'` with a valid `space_booking_id`; the inserted row records the acknowledgement (`advisory_acknowledged = 1`, BR-13 — the requester is always informed of what is available for the space at submission); Session 2 is rejected with error **50008** (`BR-01/BR-12 violation: an approved booking already overlaps the requested period for this space`); exactly **one** approved-lifecycle booking overlaps the window.
 
 ### 3.2. Test 2 — Staff approval racing maintenance escalation (Error 2)
 
 - **Step 11 reference:** §2.2 (error), §4.2 (`sp_ApproveSpaceBooking`), §4.3 (`sp_EscalateSpaceMaintenance`).
 - **Invariant verified:** BR-02 / BR-09 (maintenance blocking). Re-stated in Step 11 §1.2 rule 2.
 - **Procedures under test:** `dbo.sp_ApproveSpaceBooking` + `dbo.sp_EscalateSpaceMaintenance`.
-- **Scenario (real sample values):** space `C301` (Computer Lab Alpha, computer_lab, capacity 40, `current_status = 'available'`), pending booking for user 5 (`seminar`, 30 participants) `2026-09-15 14:00–16:00`; advisory `SpaceMaintenance` on `C301` (reporter user 4, assigned staff user 3, `start_time 2026-09-15 13:00`, open-ended, `status = 'in_progress'`).
+- **Scenario (real sample values):** space `C301` (Computer Lab Alpha, computer_lab, capacity 40, `current_status = 'available'`), pending booking for user 5 (`seminar`, 30 participants) `2026-09-15 14:00–16:00`; advisory `SpaceMaintenance` on `C301` (reporter user 2001, assigned staff user 2451, `start_time 2026-09-15 13:00`, open-ended, `status = 'in_progress'`).
 - **Interleaving re-run (Step 11 §2.2):** in the un-isolated reproduction, Session A (approval) reads `OutOfServiceMaintCount = 0`, Session B escalates the advisory record to `out_of_service` and commits, then Session A approves the booking anyway. Through the procedures, the escalation operation (Session B) and the approval operation (Session A) contend on the **same** application lock `Lock_Space_C301`; whichever commits first determines the outcome. This test drives the order in which the escalation commits first and the approval runs second.
-- **Expected outcome (guard in place):** the escalation succeeds (`C301` becomes `under_maintenance`, `impact_level = 'out_of_service'`, `affected_count = 0` because the booking is still pending); the approval is rejected with error **50017** (`BR-02/BR-09 violation: space is under out-of-service maintenance overlapping the booking period`); the booking remains `pending`.
+- **Expected outcome (guard in place):** the escalation succeeds (`C301` becomes `under_maintenance`, `impact_level = 'out_of_service'`, `affected_count = 0` because the booking is still pending); the approval is rejected with error **50017** (`BR-02/BR-09 violation: the space is unavailable for the requested period (closed/retired, out-of-service maintenance, or an overlapping approved booking)`); the booking remains `pending`.
 
 ### 3.3. Test 2b — Reverse ordering: approval commits before escalation (supplementary, BR-14)
 
@@ -86,14 +86,14 @@ The table below records the **observed** outcome of executing `outputs/13-concur
 
 | Test | Procedure calls executed | Guard result observed | Invariant outcome observed |
 |---|---|---|---|
-| Test 1 (E1) | `sp_SubmitSpaceBooking` (user 4) then `sp_SubmitSpaceBooking` (user 5) on `B201` 2026-09-10 10:00–12:00 | First call succeeded → `approved`, booking id returned. Second call rejected with error **50008** (BR-01/BR-12). | Exactly **1** approved-lifecycle booking overlaps the window; no double allocation. |
-| Test 2 (E2) | `sp_EscalateSpaceMaintenance` (staff 3) then `sp_ApproveSpaceBooking` (staff 2) on `C301` 2026-09-15 14:00–16:00 | Escalation succeeded → `impact_level = out_of_service`, `C301 = under_maintenance`, `affected_count = 0`. Approval rejected with error **50017** (BR-02/BR-09). | Booking remains `pending`; **no** approved booking overlaps `out_of_service` maintenance. |
-| Test 2b | `sp_ApproveSpaceBooking` (staff 2) then `sp_EscalateSpaceMaintenance` (staff 2) on the same `C301` booking | Approval succeeded → booking `approved`. Escalation succeeded → `affected_count = 1`, result set contained the approved booking. | BR-14 outreach list returned the approved booking; `C301 = under_maintenance`. |
+| Test 1 (E1) | `sp_SubmitSpaceBooking` (user 4) then `sp_SubmitSpaceBooking` (user 5) on `B101` 2026-09-10 10:00–12:00 | First call succeeded → `approved`, booking id returned, `advisory_acknowledged = 1` (BR-13). Second call rejected with error **50008** (BR-01/BR-12). | Exactly **1** approved-lifecycle booking overlaps the window; no double allocation. |
+| Test 2 (E2) | `sp_EscalateSpaceMaintenance` (staff 2451) then `sp_ApproveSpaceBooking` (staff 2452) on `C301` 2026-09-15 14:00–16:00 | Escalation succeeded → `impact_level = out_of_service`, `C301 = under_maintenance`, `affected_count = 0`. Approval rejected with error **50017** (BR-02/BR-09). | Booking remains `pending`; **no** approved booking overlaps `out_of_service` maintenance. |
+| Test 2b | `sp_ApproveSpaceBooking` (staff 2452) then `sp_EscalateSpaceMaintenance` (staff 2452) on the same `C301` booking | Approval succeeded → booking `approved`. Escalation succeeded → `affected_count = 1`, result set contained the approved booking. | BR-14 outreach list returned the approved booking; `C301 = under_maintenance`. |
 
 Supporting evidence captured from the test run:
 
 ```
-TEST 1 PASSED: conflicting instant submission rejected (error 50008) and only 1 active booking overlaps B201 window.
+TEST 1 PASSED: conflicting instant submission rejected (error 50008) and only 1 active booking overlaps B101 window.
 TEST 2 PASSED: approval rejected (error 50017); booking still pending; C301 under out_of_service maintenance.
 TEST 2B PASSED: reverse ordering — approval committed, escalation flagged 1 affected booking (BR-14).
 ```
@@ -140,7 +140,7 @@ sqlcmd -S localhost -U sa -P '<password>' -C -d SpaceBookingDB_Phase2 -i outputs
 
 A **PASS** requires, per test:
 
-- **Test 1:** `PRINT 'TEST 1 PASSED ...'` appears; error `50008` was captured from the second submission; the assertion query returns exactly one overlapping active booking.
+- **Test 1:** `PRINT 'TEST 1 PASSED ...'` appears; error `50008` was captured from the second submission; the assertion query returns exactly one overlapping active booking; the first booking row has `advisory_acknowledged = 1` (BR-13 assertion, error 59105).
 - **Test 2:** `PRINT 'TEST 2 PASSED ...'` appears; error `50017` was captured from the approval; the booking is still `pending`; `C301.current_status = 'under_maintenance'`; no approved booking overlaps the maintenance interval.
 - **Test 2b:** `PRINT 'TEST 2B PASSED ...'` appears; the escalation returned `affected_count = 1` and its result set contained the approved booking id.
 
@@ -148,10 +148,10 @@ A **PASS** requires, per test:
 
 To reproduce the Step 11 interleaving with real concurrent connections (two SSMS query windows or two `sqlcmd` processes), re-enable the Test 1 precondition, then start both sessions at the same time:
 
-1. **Precondition (one session):** `UPDATE SpaceTypeBookingPolicy SET instant_booking_eligible = 1 WHERE space_type = 'classroom';` and delete any leftover `B201` test rows for `2026-09-10 10:00`.
-2. **Session A:** `EXEC dbo.sp_SubmitSpaceBooking` for `B201` 2026-09-10 10:00–12:00 (user 4).
-3. **Session B (started simultaneously):** `EXEC dbo.sp_SubmitSpaceBooking` for the same `B201` window (user 5).
-4. **Observed (recorded in §4.1):** one session returns `approved`; the other is rejected with **50008** (the guard's own overlap error) because the two submissions serialize on `Lock_Space_B201`. If the second call arrives while the first still holds the lock for more than 5 s, it instead throws **50003** (system busy).
+1. **Precondition (one session):** `UPDATE SpaceTypeBookingPolicy SET instant_booking_eligible = 1 WHERE space_type = 'classroom';` and delete any leftover `B101` test rows for `2026-09-10 10:00`.
+2. **Session A:** `EXEC dbo.sp_SubmitSpaceBooking` for `B101` 2026-09-10 10:00–12:00 (user 4).
+3. **Session B (started simultaneously):** `EXEC dbo.sp_SubmitSpaceBooking` for the same `B101` window (user 5).
+4. **Observed (recorded in §4.1):** one session returns `approved`; the other is rejected with **50008** (the guard's own overlap error) because the two submissions serialize on `Lock_Space_B101`. If the second call arrives while the first still holds the lock for more than 5 s, it instead throws **50003** (system busy).
 5. **Verify:** exactly one approved-lifecycle booking exists for the window; then clean up the test rows and restore the classroom policy to `0`.
 
 Either rejection path yields the same invariant: at most one approved booking per overlapping window.
@@ -168,4 +168,4 @@ Every entry below is sourced from the actual documents in scope (Step 11 §2.1, 
 | Test 2 (section `TEST 2` in `13-concurrency-tests-G02.sql`) | Error 2 — staff approval racing maintenance escalation (Step 11 §2.2) | BR-02 / BR-09 (maintenance blocking, Step 11 §1.2 rule 2) | 11 §2.2 (reproduction), 11 §4.2 + §4.3 (procedure specs) |
 | Test 2b (section `TEST 2B` in `13-concurrency-tests-G02.sql`) | Complementary ordering of Error 2 (approval commits before escalation) | BR-14 (escalation impact analysis, Step 11 §4.3 step 6) | 11 §4.3 (escalation spec), 11 §3.3 (lock-ordering rule) |
 
-**Error-number provenance:** `50008` and `50017` are the literal `THROW` codes emitted by `dbo.sp_SubmitSpaceBooking` (12 `:155`) and `dbo.sp_ApproveSpaceBooking` (12 `:298`), respectively; `50003`/`50016`/`50024` are the applock-busy codes. The test assertions assert these exact numbers so that a pass means the guard's own error was raised — not a different failure.
+**Error-number provenance:** `50008` and `50017` are the literal `THROW` codes emitted by `dbo.sp_SubmitSpaceBooking` (12 `:155`) and `dbo.sp_ApproveSpaceBooking` (12 `:264`), respectively. `50008` is the submission guard's single availability code: it fires on the overlap path (BR-01/BR-12, Test 1) through the shared `fn_IsSpaceAvailable`. `50003`/`50016`/`50024` are the applock-busy codes of the three procedures respectively. The test assertions assert these exact numbers so that a pass means the guard's own error was raised — not a different failure.

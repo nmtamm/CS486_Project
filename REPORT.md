@@ -566,3 +566,173 @@ The following business rules are defined in the business requirements but are no
 ## Model Usage
 
 **Big Pickle (from the default provider):** Used as the primary model.
+
+---
+
+# Student Work Report
+
+**Name:** Nguyễn Minh Tâm
+
+**Student ID:** 24125042
+
+**Task:** Update Schema migration
+
+## Tasks have been done:
+1. Add notify_status column to SpaceMaintenance to notify staff if there is any update
+2. Create function to check if a space is under maintenance or not
+   - If there is an out-of-service record in SpaceMaintenace
+   - If there is an out-of-service record of any Facility belong to that place in Facility Maintenance
+3. Create function to check if a space is available or not
+   - Check if that space is retired or temporarily closed
+   - Check if that space is under maintenance or not
+4. Update trigger in SpaceMaintenance.
+   - Base on the status of the place using the previous function, set the correspoding status
+   - Synchronize the notify_status column to correctly announce staff there is an insert/ update in SpaceMaintenance. After that, staff will run query 4 to announce related requester.
+5. Add trigger in FacilityMaintenance
+   - The logic is the same as trigger for SpaceMaintenance
+6. Add trigger to only allow booking on available spaces
+7. Add trigger to synchronize BookingApproval with SpaceBooking
+
+---
+
+**Name:** Võ Huy Dâng
+
+**Student ID:** 20125022
+
+**Task:** Step 14 — Sample Data Generation (`14-data-generator-G02`)
+
+# Tasks have been done
+
+1. **Created Data Generator Skill Instruction (`.opencode/skills/db-design-pipeline/step-14-data-generator/INSTRUCTION.md`)** — Defined step instructions, dependency graph, prerequisite reference selection rules, scale estimations, and execution flow. Updated master pipeline skill (`.opencode/skills/db-design-pipeline/SKILL.md`) to register `outputs/14-data-generator-G02/` and Step 14 in the steps table.
+2. **Created Database Data Reset Script (`outputs/14-data-generator-G02/reset_database_data.sql`)** — T-SQL script to safely clear all rows in database tables in strict reverse Foreign Key dependency order (`FacilityMaintenance` -> `SpaceMaintenance` -> `SpaceUsageSession` -> `BookingApproval` -> `SpaceBooking` -> `CampusFacility` -> `CampusSpace` -> `SpaceTypeBookingPolicy` -> `CampusUser` -> `Semester`) and reseed IDENTITY counters to 0.
+3. **Created Connection Diagnostic Script (`outputs/14-data-generator-G02/test_db_connection.py`)** — Python diagnostic script using `pyodbc` to verify connection parameters to MS SQL Server database `SpaceBookingDB_Phase2` and validate schema readiness across all 10 tables.
+4. **Created Bulk Sample Data Generator Script (`outputs/14-data-generator-G02/generate_bulk_data.py`)** — Python generator script that populates prerequisite master data (9 semesters, 2,500 users, 60 spaces, 180 facilities, 1,500 maintenance records) and generates **100,000 `SpaceBooking` records**, **~50,000 `BookingApproval` records**, and **~50,000 `SpaceUsageSession` records** across 3 academic years (2023–2026). Temporarily disables status transition triggers during bulk ingestion (`ALTER TABLE SpaceBooking DISABLE TRIGGER ALL;`) and executes high-throughput bulk inserts (`fast_executemany`) in ~10 seconds.
+5. **Created Verification Script (`outputs/14-data-generator-G02/verify_data_integrity.sql`)** — T-SQL script validating table row counts, foreign key integrity (0 orphans), workflow consistency, and zero schedule overlaps on approved/completed bookings.
+6. **Created Step 14 Documentation (`outputs/14-data-generator-G02/README.md`)** — Comprehensive user documentation covering python virtual environment setup (`py -m venv .venv`), dependency installation (`pip install pyodbc faker`), `SpaceBookingDB_Phase2` connection settings, and step-by-step execution instructions.
+
+## Model Usage
+
+**Gemini 3.6 Flash (High):** Used as the primary model.
+
+---
+
+# Student Work Report
+
+**Name:** Nguyễn Minh Tâm
+
+**Student ID:** 24125042
+
+**Task:** Fix data generation logic
+
+## Current problem:
+1. I have added column "notify_status" to SpaceMaintenance. Hence I need update the logic a bit
+2. Triggers are violated with current approach
+
+## What have been done:
+1. Ensure that triggers are not violated
+2. Divide into patches and commit right after generate
+
+## New flow:
+
+### Update phase 5: Maintenance Data
+1. Currently, only marks maximum 10 spaces under maintenance. The rest 50 are available for booking.
+2. Add maintenance consisting 3 status, with the following percentage: 10% reported, 15% in_progress, 75% completed
+3. Update `impact_level` of `SpaceMaintenance`
+4. Update `notify_status` according to `impact_level`
+5. Do the same for `FacilityMaintenance`
+6. 
+
+### Update phase 6:
+1. Insert `approved` or `pending` records to `SpaceMaintenance`
+2. Use ID retrieved from database instead of manually count
+3. Update status of `SpaceBooking` from pending -> cancelled
+4. Generate `BookingApproval` records, 85% approved for non-instant and 15% reject
+5. Update status of `SpaceBooking` from approved -> checked_in -> completed
+6. Update status of remaining records in `SpaceBooking` from checked_in -> no-show
+7. Generate sessions for completed booking and stored to `SpaceUsageSession`
+8. 
+
+---
+
+**Name:** Trần Trung Hậu
+
+**Student ID:** 24125055
+
+**Task:** Step 16 — Analytical Queries
+
+# Tasks have been done (manually)
+
+Implement required queries for necessary reporting:
+
+1. AQ-01 Total approved booking hours of each space for a given semester.
+2. AQ-02 Number of approved bookings by weekday and hour for a semester.
+3. AQ-03 Available spaces satisfying capacity and required facilities.
+4. AQ-04 Approved bookings affected by out-of-service maintenance (if the maintenance is escalated to out-of-service).
+
+---
+
+# Student Work Report
+
+**Name:** Nguyễn Minh Tâm
+
+**Student ID:** 24125042
+
+**Task:** Update data generation logic
+
+1. Update schema a bit, remove UNIQUE constraint for `facility_type`. Since this is the general type
+2. Add data for Advisory Acknowledgement
+3. Update the logic of trigger 01
+4. Update query a bit. Try to utilize defined function as much as possible
+
+---
+
+# Student Work Report
+
+**Name:** Nguyễn Minh Tâm
+
+**Student ID:** 24125042
+
+**Task:** Step 15 - Index Tuning
+
+## Tasks have been done
+
+1. **Schema identification** — Listed the tables related to the booking conflict check, the room finder, and the 4 analytical queries (`SpaceBooking`, `CampusSpace`, `CampusFacility`, `SpaceMaintenance`, `FacilityMaintenance`, plus `CampusUser` / `SpaceTypeBookingPolicy` / `Semester` by PK only).
+2. **Attribute identification** — Mapped each tuning target's driving predicates to index key vs. INCLUDE columns (overlap: `campus_space_code`, `status`, `requested_start_time`; blocking maintenance: `campus_space_code`, `status`, `impact_level`; semester queries: `status`, `requested_start_time`; room finder: `capacity`, `facility_type`).
+3. **Index implementation** — Produced `outputs/15-index-tuning-G02.sql` with 7 nonclustered indexes (conflict check overlap, semester reporting, blocking maintenance, advisory notification, facility lookup, facility list, capacity/availability), each followed by a `GO` batch separator. Script is **not executed** per the step instruction.
+4. **Documentation** — Wrote `outputs/15-index-tuning-G02.md` documenting the objective, reference files, schema identification, indexable attribute analysis, index implementation table, execution restriction, and traceability.
+
+## Model Usage
+
+**Big Pickle (from the default provider):** Used as the primary model.
+
+---
+
+# Student Work Report
+
+**Name:** Nguyễn Minh Tâm
+
+**Student ID:** 24125042
+
+**Task:** Schema update + Concurrency update + Add disable/rebuild option to Index
+
+## Tasks have been done
+1. Add one more column to `SpaceBooking` for this purpose: Such maintenance has impact level advisory: the space can still be booked, but the system must notify the requester of all active advisories on the space at booking time, and must record that the requester was informed (an acknowledgement stored with the booking). Also update related outputs
+2. Utilize already defined functions and triggers in `Step 12 - Concurrency Implementation`
+3. **`sp_ApproveSpaceBooking` now only records the staff decision** (`outputs/12-concurrency-implementation-G02.sql`) — removed both manual `UPDATE SpaceBooking SET status = 'approved' / 'rejected'` statements. The procedure only `INSERT`s into `BookingApproval`; `SpaceBooking.status` is synced by the existing trigger `trg_BookingApproval_UpdateBookingStatus` (`10-schema-migration-G02.sql`), which re-validates availability and re-fires the transition trigger.
+4. Removed stale references to the dropped `trg_SpaceBooking_AvailabilityCheck_Insert` (its insert-time check was folded into TRG-02).
+5. Add test for `dbo.sp_EscalateSpaceMaintenance` in `Step 13 - Concurrency Tests`
+6. Add disable and enable index in `Step 15 - Index tuning`
+
+---
+
+**Name:** Trịnh Võ Nam Kiệt
+
+**Student ID:** 24125013
+
+**Task:** Normalization Validation
+
+## Tasks have been done
+
+1. **Validated the Phase 2 schema normalization** — Reviewed all ten tables in `outputs/10-schema-migration-G02.sql` against 1NF, 2NF, 3NF, and BCNF requirements.
+2. **Documented functional dependencies and candidate keys** — Created `NORMAL.md` with per-table functional dependencies and normalization justifications.
+3. **Confirmed the overall result** — Determined that all ten tables satisfy BCNF under the functional dependencies supported by the SQL schema.
