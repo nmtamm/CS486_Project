@@ -65,8 +65,8 @@ The tables involved in the booking conflict check, the room finder, and the four
 | `SpaceBooking` | booking conflict check overlap (11 §4.1.3, §4.2.2); room finder overlap (Q3); approved-booking semester queries (Q1, Q2); escalation impact query (Q4) |
 | `CampusSpace` | room finder capacity/availability filter (Q3); space-name join (Q1) |
 | `CampusFacility` | room finder required-facility list (Q3); booking conflict check advisory lookup (BR-13) |
-| `SpaceMaintenance` | booking conflict check blocking-maintenance predicate (BR-02/BR-09); escalation context (Q4) |
-| `FacilityMaintenance` | booking conflict check advisory-notification predicate (BR-13) |
+| `SpaceMaintenance` | booking conflict check blocking-maintenance predicate (BR-02/BR-09); escalation context (Q4); AQ-04 escalated-spaces lookup (BR-14) |
+| `FacilityMaintenance` | booking conflict check advisory-notification predicate (BR-13); AQ-04 escalated-facilities lookup (BR-14) |
 | `CampusUser` | booking conflict check requester/staff existence (PK lookup only — no new index) |
 | `SpaceTypeBookingPolicy` | booking conflict check instant-booking policy lookup (PK lookup only — no new index) |
 | `Semester` | Q1 / Q2 given-semester date-range lookup (PK / UNIQUE lookup only — no new index) |
@@ -210,18 +210,33 @@ WHERE cs.capacity >= @required_capacity
 ### 5.7. Q4 — Approved bookings affected by escalation to `out_of_service`
 
 ```sql
-SELECT sb.space_booking_id, sb.requester_id, sb.campus_space_code,
-       sb.requested_start_time, sb.requested_end_time, sb.status
-FROM SpaceBooking AS sb
-WHERE sb.campus_space_code = @campus_space_code
-  AND sb.status IN (N'approved', N'checked_in')
-  AND sb.requested_start_time < @maint_end
-  AND @start_time < sb.requested_end_time;
+SELECT * FROM SpaceBooking
+WHERE status IN (N'approved', N'checked_in')
+  AND campus_space_code IN (
+      SELECT DISTINCT campus_space_code
+      FROM SpaceMaintenance
+      WHERE notify_status = N'updated_to_out_of_service'
+    UNION
+      SELECT DISTINCT cf.campus_space_code
+      FROM FacilityMaintenance fm
+      JOIN CampusFacility cf ON fm.campus_facility_id = cf.campus_facility_id
+      WHERE fm.notify_status = N'updated_to_out_of_service');
 ```
 
-The predicate is a subset of the booking conflict check overlap (5.1) — equality on `campus_space_code`, `status IN (...)`, interval overlap. It is fully served by **[IDX-01]**; no additional index is required.
+| Attribute | Role | Action |
+|---|---|---|
+| `SpaceMaintenance.notify_status` | equality filter (BR-14 outreach state) | index key (leading) |
+| `SpaceMaintenance.campus_space_code` | output (space key) | index key |
+| `FacilityMaintenance.notify_status` | equality filter (BR-14 outreach state) | index key (leading) |
+| `FacilityMaintenance.campus_facility_id` | join key to `CampusFacility` PK | index key |
 
-### 5.8. Attributes that need no additional index
+The `CampusFacility` side of the join is a clustered PK lookup on `campus_facility_id` (returns `campus_space_code`) — no additional index needed. The outer `SpaceBooking` predicate is the same overlap-shaped filter as Q4 and is served by **[IDX-01]**.
+
+**Indexes:**
+- `SpaceMaintenance (notify_status, campus_space_code)` — **[IDX-08]**.
+- `FacilityMaintenance (notify_status, campus_facility_id)` — **[IDX-09]**.
+
+### 5.9. Attributes that need no additional index
 
 The following are already covered by existing clustered PK / UNIQUE indexes created inline in `10-schema-migration-G02.sql` §1, and are accessed by primary-key lookups only:
 
@@ -237,17 +252,19 @@ The following are already covered by existing clustered PK / UNIQUE indexes crea
 
 ## 6. Step 3 — Index Implementation
 
-All seven indexes are **nonclustered** and are implemented in `outputs/15-index-tuning-G02.sql`; the clustered PK / UNIQUE indexes remain unchanged.
+All nine indexes are **nonclustered** and are implemented in `outputs/15-index-tuning-G02.sql`; the clustered PK / UNIQUE indexes remain unchanged.
 
 | ID | Index | Table | Key columns | Included columns | Serves |
 |---|---|---|---|---|---|
-| IDX-01 | `IX_SpaceBooking_Space_Status_Start` | `SpaceBooking` | `campus_space_code`, `status`, `requested_start_time` | `requested_end_time` | conflict check overlap, Q3 overlap, Q4 |
+| IDX-01 | `IX_SpaceBooking_Space_Status_Start` | `SpaceBooking` | `campus_space_code`, `status`, `requested_start_time` | `requested_end_time` | conflict check overlap, Q3 overlap|
 | IDX-02 | `IX_SpaceBooking_Status_StartTime` | `SpaceBooking` | `status`, `requested_start_time` | `campus_space_code`, `requested_end_time` | Q1, Q2 |
 | IDX-03 | `IX_SpaceMaintenance_Space_Status_Impact` | `SpaceMaintenance` | `campus_space_code`, `status`, `impact_level` | `start_time`, `completion_time` | conflict check blocking (BR-02/BR-09), maintenance trigger |
 | IDX-04 | `IX_FacilityMaintenance_Facility_Status_Impact` | `FacilityMaintenance` | `campus_facility_id`, `status`, `impact_level` | `start_time`, `completion_time` | conflict check advisory (BR-13) |
 | IDX-05 | `IX_CampusFacility_SpaceCode` | `CampusFacility` | `campus_space_code` | `campus_facility_id`, `facility_type` | conflict check advisory (BR-13) |
 | IDX-06 | `IX_CampusFacility_Type_Space` | `CampusFacility` | `facility_type`, `campus_space_code` | `status` | Q3 facility list |
 | IDX-07 | `IX_CampusSpace_Capacity_Status` | `CampusSpace` | `capacity` | `current_status`, `space_type`, `space_name`, `building`, `floor`, `room_number` | Q3 room finder |
+| IDX-08 | `IX_SpaceMaintenance_NotifyStatus_Space` | `SpaceMaintenance` | `notify_status`, `campus_space_code` | — | Q4 |
+| IDX-09 | `IX_FacilityMaintenance_NotifyStatus_Facility` | `FacilityMaintenance` | `notify_status`, `campus_facility_id` | — | Q4 |
 
 ```sql
 CREATE NONCLUSTERED INDEX IX_SpaceBooking_Space_Status_Start
@@ -284,6 +301,14 @@ CREATE NONCLUSTERED INDEX IX_CampusSpace_Capacity_Status
     ON dbo.CampusSpace (capacity)
     INCLUDE (current_status, space_type, space_name, building, floor, room_number);
 GO
+
+CREATE NONCLUSTERED INDEX IX_SpaceMaintenance_NotifyStatus_Space
+    ON dbo.SpaceMaintenance (notify_status, campus_space_code);
+GO
+
+CREATE NONCLUSTERED INDEX IX_FacilityMaintenance_NotifyStatus_Facility
+    ON dbo.FacilityMaintenance (notify_status, campus_facility_id);
+GO
 ```
 
 ### 6.1. T-SQL conformance
@@ -310,6 +335,7 @@ Per `step-15-index-tuning/INSTRUCTION.md` — **DO NOT RUN AFTER IMPLEMENTATION*
 | Q1 — approved booking hours per space / semester | Step 15 requirement 1 | IDX-02 |
 | Q2 — approved bookings by weekday & hour / semester | Step 15 requirement 2 | IDX-02 |
 | Q3 — room finder (capacity + facility list + period) | Step 15 requirement 3 | IDX-06, IDX-07, IDX-01 |
-| Q4 — bookings affected by maintenance escalation | `sp_EscalateSpaceMaintenance` → 11 §4.3.2, BR-14 | IDX-01 |
+| 04 — escalated-spaces lookup (BR-14) | Step 15 requirement 4 | IDX-08 |
+| 04 — escalated-facilities lookup (BR-14) | Step 15 requirement 4 | IDX-09 |
 
 All table and column identifiers are sourced from `10-schema-migration-G02.sql` (09 §4.2); no identifiers were invented.

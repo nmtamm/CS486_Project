@@ -70,6 +70,35 @@ CREATE NONCLUSTERED INDEX IX_CampusSpace_Capacity_Status
     INCLUDE (current_status, space_type, space_name, building, floor, room_number);
 GO
 
+-- ----------------------------------------------------------------------------
+-- IDX-08: AQ-04 - find spaces affected by
+-- SpaceMaintenance escalated to out_of_service
+-- Seek: notify_status
+-- Cover: campus_space_code
+-- ----------------------------------------------------------------------------
+CREATE NONCLUSTERED INDEX IX_SpaceMaintenance_NotifyStatus_Space
+ON dbo.SpaceMaintenance
+(
+    notify_status,
+    campus_space_code
+);
+GO
+
+-- ----------------------------------------------------------------------------
+-- IDX-09: AQ-04 - find facilities affected by
+-- FacilityMaintenance escalated to out_of_service
+-- Seek: notify_status
+-- Cover: campus_facility_id
+-- ----------------------------------------------------------------------------
+
+CREATE NONCLUSTERED INDEX IX_FacilityMaintenance_NotifyStatus_Facility
+ON dbo.FacilityMaintenance
+(
+    notify_status,
+    campus_facility_id
+);
+GO
+
 -- ============================================================================
 -- OPTIONAL POST-IMPLEMENTATION VERIFICATION (do NOT run per instruction)
 -- ----------------------------------------------------------------------------
@@ -99,16 +128,20 @@ GO
  --ALTER INDEX IX_CampusFacility_SpaceCode ON dbo.CampusFacility DISABLE;
  --ALTER INDEX IX_CampusFacility_Type_Space ON dbo.CampusFacility DISABLE;
  --ALTER INDEX IX_CampusSpace_Capacity_Status ON dbo.CampusSpace DISABLE;
+ --ALTER INDEX IX_SpaceMaintenance_NotifyStatus_Space ON dbo.SpaceMaintenance DISABLE;
+ --ALTER INDEX IX_FacilityMaintenance_NotifyStatus_Facility ON dbo.FacilityMaintenance DISABLE;
 
 -- -- Enable indexes after testing (optional):
- ALTER INDEX IX_SpaceBooking_Space_Status_Start ON dbo.SpaceBooking REBUILD;
- ALTER INDEX IX_SpaceBooking_Status_StartTime ON dbo.SpaceBooking REBUILD;
- ALTER INDEX IX_SpaceMaintenance_Space_Status_Impact ON dbo.SpaceMaintenance REBUILD;
- ALTER INDEX IX_FacilityMaintenance_Facility_Status_Impact ON dbo.FacilityMaintenance
- REBUILD;
- ALTER INDEX IX_CampusFacility_SpaceCode ON dbo.CampusFacility REBUILD;
- ALTER INDEX IX_CampusFacility_Type_Space ON dbo.CampusFacility REBUILD;
- ALTER INDEX IX_CampusSpace_Capacity_Status ON dbo.CampusSpace REBUILD;
+ --ALTER INDEX IX_SpaceBooking_Space_Status_Start ON dbo.SpaceBooking REBUILD;
+ --ALTER INDEX IX_SpaceBooking_Status_StartTime ON dbo.SpaceBooking REBUILD;
+ --ALTER INDEX IX_SpaceMaintenance_Space_Status_Impact ON dbo.SpaceMaintenance REBUILD;
+ --ALTER INDEX IX_FacilityMaintenance_Facility_Status_Impact ON dbo.FacilityMaintenance
+ --REBUILD;
+ --ALTER INDEX IX_CampusFacility_SpaceCode ON dbo.CampusFacility REBUILD;
+ --ALTER INDEX IX_CampusFacility_Type_Space ON dbo.CampusFacility REBUILD;
+ --ALTER INDEX IX_CampusSpace_Capacity_Status ON dbo.CampusSpace REBUILD;
+ --ALTER INDEX IX_SpaceMaintenance_NotifyStatus_Space ON dbo.SpaceMaintenance REBUILD;
+ --ALTER INDEX IX_FacilityMaintenance_NotifyStatus_Facility ON dbo.FacilityMaintenance REBUILD;
 
 PRINT N'Step 15 index-tuning script generated (NOT executed per instruction).';
 GO
